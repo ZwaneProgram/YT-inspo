@@ -39,11 +39,73 @@ button#yt-inspo-btn.warn { background: #a33b3b; }
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
-.yt-inspo-toast select {
-  background: #16201a;
-  color: #cfe6d0;
-  border: 1px solid #3a5c3d;
-  border-radius: 5px;
-  padding: 4px 6px;
-  font-size: 13px;
+/* Scoped hard — YouTube's page styles inherit into anything we inject. */
+.yt-inspo-panel {
+  position: fixed;
+  z-index: 99999;
+  width: 240px;
+  max-height: 320px;
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: 6px;
+  margin: 0;
+  border-radius: 10px;
+  background: #1f2430;
+  border: 1px solid #38405a;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+  font-family: "Roboto", system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: #dfe4f0;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.yt-inspo-panel * {
+  box-sizing: border-box;
+  font: inherit;
+  color: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.yt-inspo-panel .row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  margin: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.yt-inspo-panel .row:hover { background: #2b3245; }
+.yt-inspo-panel .row .tick { margin-left: auto; color: #7ea8ff; }
+.yt-inspo-panel .new { color: #9fb4ff; }
+.yt-inspo-panel .sep { height: 1px; margin: 6px 4px; background: #38405a; }
+
+.yt-inspo-panel input {
+  display: block;
+  width: 100%;
+  padding: 7px 9px;
+  margin: 0;
+  border-radius: 6px;
+  border: 1px solid #4a5578;
+  background: #151924;
+  color: #dfe4f0;
+  outline: none;
+}
+
+.yt-inspo-panel input:focus { border-color: #7ea8ff; }
+
+.yt-inspo-panel .err {
+  padding: 8px 10px 2px;
+  color: #ff9d9d;
+  font-size: 12px;
+  white-space: normal;
 }

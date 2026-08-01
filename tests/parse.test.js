@@ -10,6 +10,8 @@ import {
   filterChannels,
   folderName,
   orphanChannels,
+  folderNameTaken,
+  friendlyWriteError,
 } from "../src/lib/parse.js";
 
 const ID = "UCabcdefghijklmnopqrstuv"; // UC + 22 chars
@@ -101,4 +103,30 @@ test("orphanChannels moves a deleted folder's channels to Unsorted, keeping them
   assert.equal(after.length, 3, "no channel is lost when a folder is deleted");
   assert.equal(after.find((c) => c.id === 1).folder_id, null);
   assert.equal(after.find((c) => c.id === 2).folder_id, 20, "other folders untouched");
+});
+
+test("folderNameTaken ignores case and surrounding space", () => {
+  assert.equal(folderNameTaken(folders, "3D"), true);
+  assert.equal(folderNameTaken(folders, "3d"), true);
+  assert.equal(folderNameTaken(folders, "  3D  "), true);
+  assert.equal(folderNameTaken(folders, "Hooks"), false);
+  assert.equal(folderNameTaken([], "anything"), false);
+});
+
+test("folderNameTaken treats an empty name as free", () => {
+  assert.equal(folderNameTaken(folders, "   "), false);
+  assert.equal(folderNameTaken(folders, ""), false);
+});
+
+test("friendlyWriteError explains a duplicate folder name", () => {
+  const body =
+    '{"code":"23505","message":"duplicate key value violates unique constraint ' +
+    '\\"folders_user_id_name_key\\""}';
+  assert.equal(friendlyWriteError(body), "You already have a folder with that name");
+});
+
+test("friendlyWriteError leaves other messages alone", () => {
+  assert.equal(friendlyWriteError("Not signed in"), "Not signed in");
+  assert.equal(friendlyWriteError(""), "Something went wrong");
+  assert.equal(friendlyWriteError(null), "Something went wrong");
 });

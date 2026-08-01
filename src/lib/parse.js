@@ -75,3 +75,24 @@ export function orphanChannels(channels, deletedFolderId) {
     c.folder_id === deletedFolderId ? { ...c, folder_id: null } : c
   );
 }
+
+/**
+ * Is this folder name already in use? Compared trimmed and case-insensitively —
+ * deliberately stricter than the DB's `unique (user_id, name)`, which would happily
+ * accept both "3D" and "3d". You don't want both.
+ */
+export function folderNameTaken(folders, name) {
+  const wanted = String(name ?? "").trim().toLowerCase();
+  if (!wanted) return false;
+  return folders.some((f) => String(f.name ?? "").trim().toLowerCase() === wanted);
+}
+
+/**
+ * supabase.js throws with the raw PostgREST body as the message. Turn the one
+ * failure we can predict — a duplicate folder name — into plain English.
+ */
+export function friendlyWriteError(message) {
+  const m = String(message ?? "");
+  if (/23505|duplicate key/i.test(m)) return "You already have a folder with that name";
+  return m || "Something went wrong";
+}

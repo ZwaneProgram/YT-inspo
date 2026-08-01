@@ -3,7 +3,7 @@
 
 import * as store from "./store.js";
 import { getSession } from "./supabase.js";
-import { folderName } from "./lib/parse.js";
+import { folderName, friendlyWriteError } from "./lib/parse.js";
 
 const handlers = {
   async status({ ytChannelId }) {
@@ -15,18 +15,36 @@ const handlers = {
       signedIn: true,
       saved: !!existing,
       folder: existing ? folderName(folders, existing.folder_id) : null,
+      // The picker needs the row to move it, and its folder to tick the right line.
+      id: existing ? existing.id : null,
+      folderId: existing ? existing.folder_id ?? null : null,
     };
   },
 
   async save({ channel }) {
     const row = await store.saveChannel(channel);
     const { folders } = await store.readCache();
-    return { saved: true, folder: folderName(folders, row.folder_id), id: row.id };
+    return {
+      saved: true,
+      folder: folderName(folders, row.folder_id),
+      id: row.id,
+      folderId: row.folder_id ?? null,
+    };
   },
 
   async listFolders() {
     const { folders } = await store.readCache();
     return { folders };
+  },
+
+  async createFolder({ name }) {
+    try {
+      return { folder: await store.addFolder(name) };
+    } catch (e) {
+      const err = new Error(friendlyWriteError(e.message));
+      err.kind = e.kind;
+      throw err;
+    }
   },
 
   async moveChannel({ id, folderId }) {
