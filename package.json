@@ -1,0 +1,10 @@
+{
+  "name": "yt-inspo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser extension for cataloging YouTube channels you use for editing inspiration.",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  }
+}

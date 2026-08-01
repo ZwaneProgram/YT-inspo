@@ -1,0 +1,46 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>YT Inspo — Dashboard</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+  <section id="login" class="login hidden">
+    <h1>📺 Inspo</h1>
+    <form id="login-form">
+      <input id="email" type="email" placeholder="email" autocomplete="username" required>
+      <input id="password" type="password" placeholder="password" autocomplete="current-password" required>
+      <button type="submit" id="login-btn">Sign in</button>
+      <div id="login-error" class="error"></div>
+    </form>
+  </section>
+
+  <section id="main" class="hidden">
+    <header>
+      <h1>📺 Inspo</h1>
+      <input id="search" placeholder="Search all channels…" autocomplete="off">
+      <span id="status" class="status"></span>
+      <a id="signout" href="#">Sign out</a>
+    </header>
+
+    <div class="wrap">
+      <aside id="folders"></aside>
+
+      <main>
+        <div id="title" class="title"></div>
+        <div id="rows"></div>
+
+        <div id="bulk" class="bulk hidden">
+          <span id="bulkcount"></span>
+          <label>Move to <select id="moveto"></select></label>
+          <button id="remove" class="danger">🗑 Remove</button>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <script type="module" src="dashboard.js"></script>
+</body>
+</html>

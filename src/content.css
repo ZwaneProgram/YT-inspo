@@ -1,0 +1,49 @@
+/* Sized to sit next to YouTube's Subscribe pill without looking bolted on. */
+
+button#yt-inspo-btn {
+  margin-left: 8px;
+  padding: 0 14px;
+  height: 36px;
+  border: 0;
+  border-radius: 18px;
+  background: #3b5bdb;
+  color: #fff;
+  font-family: "Roboto", system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 36px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+button#yt-inspo-btn:hover { background: #4c6ae5; }
+button#yt-inspo-btn.saved { background: #2f6b3a; }
+button#yt-inspo-btn.saved:hover { background: #377d44; }
+button#yt-inspo-btn.warn { background: #a33b3b; }
+
+.yt-inspo-toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: #1f2a1f;
+  border: 1px solid #3a5c3d;
+  color: #cfe6d0;
+  font-family: "Roboto", system-ui, sans-serif;
+  font-size: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.yt-inspo-toast select {
+  background: #16201a;
+  color: #cfe6d0;
+  border: 1px solid #3a5c3d;
+  border-radius: 5px;
+  padding: 4px 6px;
+  font-size: 13px;
+}
