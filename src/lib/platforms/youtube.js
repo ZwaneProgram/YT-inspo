@@ -44,13 +44,6 @@ export function isSaveablePage(url) {
   return /\/watch\?|\/channel\/|\/@|\/shorts\//.test(u);
 }
 
-/** What the URL alone can tell us. Null on /@handle pages — those need the DOM. */
-export function identityFromUrl(url) {
-  const platformId = channelIdFromUrl(url);
-  if (!platformId) return null;
-  return { platformId, handle: handleFromUrl(url) };
-}
-
 // ---------- DOM ----------
 
 // Ordered by preference. YouTube ships several header layouts; first hit wins.

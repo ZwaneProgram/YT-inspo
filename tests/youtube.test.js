@@ -7,7 +7,6 @@ import {
   channelIdFromHtml,
   canonicalUrl,
   isSaveablePage,
-  identityFromUrl,
 } from "../src/lib/platforms/youtube.js";
 
 const ID = "UCabcdefghijklmnopqrstuv"; // UC + 22 chars
@@ -56,12 +55,4 @@ test("isSaveablePage accepts channel, video and shorts pages only", () => {
   assert.equal(isSaveablePage("https://www.youtube.com/feed/subscriptions"), false);
   assert.equal(isSaveablePage("https://www.youtube.com/"), false);
   assert.equal(isSaveablePage("https://google.com/@x"), false);
-});
-
-test("identityFromUrl returns null on /@handle pages, which need the DOM", () => {
-  assert.deepEqual(identityFromUrl(`https://www.youtube.com/channel/${ID}`), {
-    platformId: ID,
-    handle: null,
-  });
-  assert.equal(identityFromUrl("https://www.youtube.com/@blenderguru"), null);
 });
