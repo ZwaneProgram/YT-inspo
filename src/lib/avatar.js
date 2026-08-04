@@ -19,6 +19,9 @@ function swap(img) {
   const tile = document.createElement("div");
   tile.className = "avatar tile";
   tile.textContent = img.dataset.letter || "?";
+  // The save card looks its avatar up by id. Losing it here would make the next
+  // lookup return null and take the whole save card down with it.
+  if (img.id) tile.id = img.id;
   img.replaceWith(tile);
 }
 
