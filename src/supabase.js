@@ -188,7 +188,12 @@ export async function upsertChannel(account) {
     },
     body: {
       user_id: s.user_id,
-      folder_id: account.folder_id ?? null,
+      // Only set folder_id when the caller actually supplied one. The content-script
+      // save path never does — it relies on `status` to tell it a channel is already
+      // saved — and merge-duplicates means an omitted key here would otherwise send
+      // any re-save through this path back to Unsorted, unfiling an already-saved
+      // channel. The popup's Save card always passes one explicitly (even `null`).
+      ...(account.folder_id !== undefined ? { folder_id: account.folder_id } : {}),
       platform: account.platform,
       platform_id: account.platformId,
       handle: account.handle ?? null,
