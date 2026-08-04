@@ -138,9 +138,15 @@ would only test the mock.
 
 The two sites differ enough to be worth naming. YouTube fires `yt-navigate-finish`, which
 `content.js` already listens for. Instagram fires nothing useful, so its `onNavigate`
-compares `location.href` against the last-seen value on the `MutationObserver` tick that
-`inspo-ui.js` already runs. Chosen over patching `history.pushState`, which is more precise
-but rewrites a global on a page we don't own.
+compares `location.href` against the last-seen value on a `MutationObserver`. Chosen over
+patching `history.pushState`, which is more precise but rewrites a global on a page we
+don't own.
+
+**As built:** the Instagram adapter registers its own observer rather than sharing the one
+`inspo-ui.js` runs, so Instagram pages carry two body-wide observers. Registration order
+means the navigation handler runs before the re-attach handler, which is the order needed.
+Folding them into one would mean the shared UI knowing about navigation detection, which is
+the coupling the adapter split exists to avoid.
 
 ### Reading an Instagram account
 
