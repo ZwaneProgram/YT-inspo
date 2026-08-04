@@ -68,47 +68,101 @@ export function titleFromOgTitle(og) {
 const ACTION_WORDS = /^(follow|following|follow back|requested|message)$/i;
 
 const attr = (sel, a) => document.querySelector(sel)?.getAttribute(a) || null;
+const attrIn = (scope, sel, a) => scope?.querySelector(sel)?.getAttribute(a) || null;
 
-function header() {
-  return document.querySelector("main header") || document.querySelector("header");
+/**
+ * The one subtree that describes the account this page is about. Everything
+ * below reads from this same root, so the anchor and the author can never
+ * disagree the way they used to (findAnchor and readAccount each picked their
+ * own subtree independently).
+ *
+ * Deliberate deviation from "falls back to main" for post/reel URLs: Instagram
+ * can open a post as a dialog *over* an unrelated, still-mounted profile (e.g.
+ * clicking into a post from a profile grid, or a Tagged-tab post) — `main` in
+ * that case is the *previous* page's content, not the post's. Falling back to
+ * it would repeat exactly the "wrong account" and "stale account" failures this
+ * fix exists to remove, and inspo-ui.js's attach() only ever inserts the button
+ * once per navigation (it no-ops while `#yt-inspo-btn` exists), so a bad early
+ * read isn't self-correcting — it latches until the next navigation. So on a
+ * post/reel URL this resolves from `dialog` or `article` only; if neither is
+ * mounted yet, it returns null and the caller's poll loop tries again next
+ * tick instead of risking a wrong or stale read. Profile URLs keep the full
+ * main → document.body fallback — there's no "previous page" ambiguity there.
+ */
+function root() {
+  if (isPostUrl(location.href)) {
+    return document.querySelector("div[role='dialog']") || document.querySelector("article") || null;
+  }
+  return document.querySelector("main") || document.body;
 }
 
-/** The author link in a post or reel header, as a lowercase username. */
-function authorFromPost() {
-  const links = document.querySelectorAll(
-    "article header a[href^='/'], main header a[href^='/']"
-  );
-  for (const a of links) {
-    const username = usernameFromUrl(`https://www.instagram.com${a.getAttribute("href")}`);
-    if (username) return username;
+/** The first link within `scope` whose href is a real profile URL. */
+function authorLink(scope) {
+  if (!scope) return null;
+  for (const a of scope.querySelectorAll("a[href^='/']")) {
+    if (usernameFromUrl(`https://www.instagram.com${a.getAttribute("href")}`)) return a;
   }
   return null;
 }
 
-export function findAnchor() {
-  const h = header();
-  if (!h) return null;
+/** The lowercase username `authorLink` points at, or null. */
+function authorUsername(scope) {
+  const a = authorLink(scope);
+  return a ? usernameFromUrl(`https://www.instagram.com${a.getAttribute("href")}`) : null;
+}
 
-  for (const el of h.querySelectorAll("button, div[role='button']")) {
-    if (el.offsetParent === null) continue;
+/** The Follow/Following/Message control within `scope`, or null. */
+function actionControl(scope) {
+  if (!scope) return null;
+  for (const el of scope.querySelectorAll("button, div[role='button']")) {
+    // offsetParent is spec'd null for fixed-positioned elements even when fully
+    // visible — reel and modal-overlay controls are commonly fixed-positioned,
+    // so that check misclassified them as hidden. getClientRects() isn't fooled.
+    if (el.getClientRects().length === 0) continue;
     if (ACTION_WORDS.test(el.textContent.trim())) return el;
   }
   return null;
 }
 
+export function findAnchor() {
+  const r = root();
+  if (!r) return null;
+
+  return (
+    actionControl(r) ||
+    // Once you already follow a post/reel's author, its header shows no
+    // Follow/Message control at all — every ACTION_WORDS entry misses, and the
+    // button would silently never appear. Anchor beside the author's name link
+    // instead. Scoped to the same root as above, so this can never resolve to
+    // the site's persistent top nav.
+    (isPostUrl(location.href) ? authorLink(r) : null)
+  );
+}
+
 export function readAccount() {
   const onPost = isPostUrl(location.href);
-  const username = onPost ? authorFromPost() : usernameFromUrl(location.href);
-  if (!username) return null;
+  const r = root();
+  if (!r) return null;
+
+  const anchor = actionControl(r) || (onPost ? authorLink(r) : null);
+  const username = onPost ? authorUsername(r) : usernameFromUrl(location.href);
+
+  // Fail safe: an anchor with no resolvable author (or the reverse) means this
+  // root doesn't actually describe the current URL yet — say nothing rather
+  // than save a half-read or previous-page account.
+  if (!anchor || !username) return null;
 
   // og:title carries the display name on profile pages. On a post it describes the
   // post, not the author, so fall back to the username there.
   const title =
     (onPost ? null : titleFromOgTitle(attr('meta[property="og:title"]', "content"))) || username;
 
+  // Scoped to root, not the document: Instagram's left nav renders the
+  // logged-in user's own avatar with the same "…'s profile picture" alt text,
+  // earlier in document order than main — a document-wide query would persist
+  // your own avatar onto every saved account instead of the one being viewed.
   const avatarUrl =
-    attr(`img[alt*="profile picture"]`, "src") ||
-    attr("main header img", "src") ||
+    attrIn(r, `img[alt*="profile picture"]`, "src") ||
     (onPost ? null : attr('meta[property="og:image"]', "content"));
 
   return {
