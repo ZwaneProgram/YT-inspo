@@ -1233,7 +1233,7 @@ export function titleFromOgTitle(og) {
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `node --test tests/instagram.test.js`
-Expected: PASS, 10 tests.
+Expected: PASS, 9 tests.
 
 Then run the whole suite: `npm test` → PASS.
 
