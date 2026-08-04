@@ -1,100 +1,44 @@
-// Injects the "+ Inspo" button next to Subscribe.
+// The ➕ Inspo button, the folder picker and the error toast.
 //
-// YouTube is a single-page app: it swaps pages without reloading, and rebuilds
-// header DOM on the fly. So we re-attach on navigation AND watch for the header
-// being replaced under us.
+// Knows nothing about YouTube or Instagram: a platform adapter supplies
+// `platform`, `isSaveablePage(url)`, `findAnchor()`, `readAccount()` and
+// `onNavigate(cb)`. See src/lib/platforms/ for the two implementations.
 
-(async () => {
-  const {
-    channelIdFromUrl, handleFromUrl, channelIdFromHtml, canonicalUrl, isSaveablePage,
-    folderNameTaken,
-  } = await import(chrome.runtime.getURL("src/lib/parse.js"));
+import { folderNameTaken } from "./parse.js";
 
-  const BTN_ID = "yt-inspo-btn";
+const BTN_ID = "yt-inspo-btn";
 
-  // Ordered by preference. YouTube ships several header layouts; first hit wins.
-  const SUBSCRIBE_SELECTORS = [
-    "#owner #subscribe-button",                        // watch page
-    "ytd-video-owner-renderer #subscribe-button",      // watch page (older)
-    "yt-flexible-actions-view-model",                  // channel page (2024+)
-    "#channel-header #subscribe-button",               // channel page
-    "ytd-c4-tabbed-header-renderer #subscribe-button", // channel page (older)
-    "#subscribe-button",                               // last resort
-  ];
-
-  const findAnchor = () => {
-    for (const sel of SUBSCRIBE_SELECTORS) {
-      const el = document.querySelector(sel);
-      if (el && el.offsetParent !== null) return el;
-    }
-    return null;
-  };
-
-  // ---------- reading the channel off the page ----------
-
-  const text = (sel) => document.querySelector(sel)?.textContent?.trim() || null;
-  const attr = (sel, a) => document.querySelector(sel)?.getAttribute(a) || null;
-
-  function readChannel() {
-    const onWatch = location.pathname === "/watch" || location.pathname.startsWith("/shorts/");
-
-    const ownerLink = onWatch
-      ? attr("#owner #channel-name a, ytd-video-owner-renderer a[href]", "href")
-      : location.pathname;
-
-    const ytChannelId =
-      channelIdFromUrl(ownerLink) ||
-      channelIdFromUrl(attr('link[rel="canonical"]', "href")) ||
-      channelIdFromHtml(document.documentElement.innerHTML);
-
-    if (!ytChannelId) return null;
-
-    const handle = handleFromUrl(ownerLink) || handleFromUrl(location.href);
-
-    const title = onWatch
-      ? text("#owner #channel-name a, ytd-video-owner-renderer #channel-name a")
-      : text("yt-dynamic-text-view-model h1, #channel-name #text, #channel-header h1") ||
-        attr('meta[property="og:title"]', "content");
-
-    const avatarUrl = onWatch
-      ? attr("#owner img, ytd-video-owner-renderer img", "src")
-      : attr("yt-avatar-shape img, #channel-header img, #avatar img", "src") ||
-        attr('meta[property="og:image"]', "content");
-
-    if (!title) return null;
-
-    return {
-      platform: "youtube",
-      platformId: ytChannelId,
-      handle,
-      title,
-      avatarUrl,
-      url: canonicalUrl({ handle, ytChannelId }),
-    };
-  }
-
-  // ---------- the button ----------
-
+export function start(adapter) {
   const send = (msg) =>
     new Promise((resolve) => chrome.runtime.sendMessage(msg, (r) => resolve(r || { ok: false })));
+
+  // ---------- the button ----------
 
   function paint(btn, state, label) {
     btn.className = `yt-inspo-btn ${state}`;
     btn.textContent = label;
   }
 
-  async function refreshState(btn, channel) {
-    const res = await send({ type: "status", platform: channel.platform, platformId: channel.platformId });
+  async function refreshState(btn, account) {
+    const res = await send({
+      type: "status",
+      platform: account.platform,
+      platformId: account.platformId,
+    });
     if (!res.ok) return paint(btn, "warn", "⚠ Inspo");
     if (!res.signedIn) return paint(btn, "", "➕ Sign in");
     if (res.saved) return paint(btn, "saved", `✓ ${res.folder}`);
     paint(btn, "", "➕ Inspo");
   }
 
-  async function onClick(btn, channel) {
+  async function onClick(btn, account) {
     if (picker) return closePicker(); // second click closes it
 
-    const state = await send({ type: "status", platform: channel.platform, platformId: channel.platformId });
+    const state = await send({
+      type: "status",
+      platform: account.platform,
+      platformId: account.platformId,
+    });
 
     if (state.ok && !state.signedIn) {
       // Can't open the popup programmatically, so send them to the dashboard to sign in.
@@ -102,10 +46,10 @@
       return;
     }
     // Already saved: no write, just let them re-file it.
-    if (state.ok && state.saved) return openPicker(btn, channel, state.id, state.folderId);
+    if (state.ok && state.saved) return openPicker(btn, account, state.id, state.folderId);
 
     paint(btn, "", "saving…");
-    const res = await send({ type: "save", account: channel });
+    const res = await send({ type: "save", account });
 
     if (!res.ok) {
       paint(btn, "warn", "⚠ Retry");
@@ -113,18 +57,18 @@
       return;
     }
     paint(btn, "saved", `✓ ${res.folder}`);
-    return openPicker(btn, channel, res.id, res.folderId ?? null);
+    return openPicker(btn, account, res.id, res.folderId ?? null);
   }
 
   function attach() {
-    if (!isSaveablePage(location.href)) return;
+    if (!adapter.isSaveablePage(location.href)) return;
     if (document.getElementById(BTN_ID)) return;
 
-    const anchor = findAnchor();
+    const anchor = adapter.findAnchor();
     if (!anchor) return;
 
-    const channel = readChannel();
-    if (!channel) return;
+    const account = adapter.readAccount();
+    if (!account) return;
 
     const btn = document.createElement("button");
     btn.id = BTN_ID;
@@ -132,11 +76,11 @@
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      onClick(btn, channel);
+      onClick(btn, account);
     });
 
     anchor.parentElement?.insertBefore(btn, anchor.nextSibling);
-    refreshState(btn, channel);
+    refreshState(btn, account);
   }
 
   // ---------- picker ----------
@@ -291,7 +235,7 @@
     closePicker();
   }
 
-  async function openPicker(btn, channel, savedId, folderId) {
+  async function openPicker(btn, account, savedId, folderId) {
     closePicker();
 
     const res = await send({ type: "listFolders" });
@@ -304,7 +248,7 @@
     picker = {
       el,
       btn,
-      channel,
+      account,
       savedId,
       folderId: folderId ?? null,
       folders: res.folders || [],
@@ -320,7 +264,7 @@
   }
 
   // ---------- toast ----------
-  // Errors only now — filing happens in the picker.
+  // Errors only — filing happens in the picker.
 
   let toastEl = null;
   let toastTimer = null;
@@ -337,11 +281,11 @@
     toastTimer = setTimeout(() => toastEl?.remove(), 4000);
   }
 
-  // The popup asks us what channel this tab is showing — we're the only one
+  // The popup asks us what account this tab is showing — we're the only one
   // who can read the page.
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-    if (msg?.type !== "readChannel") return false;
-    sendResponse({ ok: true, channel: readChannel() });
+    if (msg?.type !== "readAccount") return false;
+    sendResponse({ ok: true, account: adapter.readAccount() });
     return true;
   });
 
@@ -355,16 +299,16 @@
     }, 300); // header can take a beat to render after navigation
   };
 
-  document.addEventListener("yt-navigate-finish", () => {
+  adapter.onNavigate(() => {
     closePicker(); // it's anchored to a button that's about to be replaced
     document.getElementById(BTN_ID)?.remove();
     retryAttach();
   });
 
-  // If YouTube rebuilds the header, our button goes with it — put it back.
+  // If the site rebuilds its header, our button goes with it — put it back.
   new MutationObserver(() => {
     if (!document.getElementById(BTN_ID)) attach();
   }).observe(document.body, { childList: true, subtree: true });
 
   retryAttach();
-})();
+}

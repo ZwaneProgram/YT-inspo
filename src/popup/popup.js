@@ -82,12 +82,12 @@ async function detectPageChannel() {
   if (!tab?.url?.includes("youtube.com")) return;
 
   const res = await chrome.tabs
-    .sendMessage(tab.id, { type: "readChannel" })
+    .sendMessage(tab.id, { type: "readAccount" })
     .catch(() => null); // content script not on this page — fine, no save card
 
-  if (!res?.channel) return;
+  if (!res?.account) return;
 
-  pageChannel = res.channel;
+  pageChannel = res.account;
   $("save-title").textContent = pageChannel.title;
   if (pageChannel.avatarUrl) $("save-avatar").src = pageChannel.avatarUrl;
   $("save-card").classList.remove("hidden");
