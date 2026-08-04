@@ -70,36 +70,111 @@ const ACTION_WORDS = /^(follow|following|follow back|requested|message)$/i;
 const attr = (sel, a) => document.querySelector(sel)?.getAttribute(a) || null;
 const attrIn = (scope, sel, a) => scope?.querySelector(sel)?.getAttribute(a) || null;
 
+// getClientRects() rather than offsetParent: offsetParent is spec'd null for
+// fixed-positioned elements even when they're fully visible, and reel/modal
+// overlay controls are commonly fixed-positioned. getClientRects() isn't fooled,
+// and still returns empty for display:none and never-laid-out subtrees.
+const visible = (el) => el.getClientRects().length > 0;
+
+/** The post/reel shortcode a pathname points at, e.g. "/p/CxYz123/" → "CxYz123". */
+function shortcode(pathname) {
+  const m = /^\/(?:p|reel)\/([A-Za-z0-9_-]+)/.exec(String(pathname || ""));
+  return m ? m[1] : null;
+}
+
+/**
+ * How a link inside a candidate root can prove that root is the current post,
+ * strongest first. Every tier is tried across every candidate before the next
+ * tier is tried at all, so a weakly-proved candidate can never beat a
+ * strongly-proved one.
+ */
+const SELF_LINK_PROOFS = [
+  // The post's own timestamp ("2 DAYS AGO"), which is an <a> to its permalink
+  // wrapping a <time>. Only the view *of* the post renders this.
+  (a) => !!a.querySelector("time"),
+  // Anything else that isn't a thumbnail. Grid tiles — a profile's post grid, a
+  // Tagged tab, the "more posts from" row — are links wrapping an <img>, and
+  // they're the one way a *stale* root can end up holding a link to the post
+  // you just navigated to. Excluding them is what keeps this tier safe.
+  (a) => !a.querySelector("img"),
+];
+
 /**
  * The one subtree that describes the account this page is about. Everything
  * below reads from this same root, so the anchor and the author can never
  * disagree the way they used to (findAnchor and readAccount each picked their
  * own subtree independently).
  *
- * Deliberate deviation from "falls back to main" for post/reel URLs: Instagram
- * can open a post as a dialog *over* an unrelated, still-mounted profile (e.g.
- * clicking into a post from a profile grid, or a Tagged-tab post) — `main` in
- * that case is the *previous* page's content, not the post's. Falling back to
- * it would repeat exactly the "wrong account" and "stale account" failures this
- * fix exists to remove, and inspo-ui.js's attach() only ever inserts the button
- * once per navigation (it no-ops while `#yt-inspo-btn` exists), so a bad early
- * read isn't self-correcting — it latches until the next navigation. So on a
- * post/reel URL this resolves from `dialog` or `article` only; if neither is
- * mounted yet, it returns null and the caller's poll loop tries again next
- * tick instead of risking a wrong or stale read. Profile URLs keep the full
- * main → document.body fallback — there's no "previous page" ambiguity there.
+ * On a post/reel URL the root has to *prove* it's about the current URL before
+ * it's used. Instagram flips the URL before it swaps the DOM, and it keeps the
+ * previous view mounted while it does: a post opened over a profile (a grid or
+ * Tagged-tab click), a second post opened from inside the first one's modal, a
+ * permalink opened from the home feed. In every one of those the previous
+ * page's `main`/`article`/`dialog` is still there and will answer *consistently
+ * and wrongly*. inspo-ui.js's attach() no-ops while `#yt-inspo-btn` exists and
+ * never re-reads the account it captured, so a wrong read latches until the
+ * next navigation — while returning null costs nothing, because the standing
+ * MutationObserver calls attach() again on the next mutation. So: require a
+ * link to this URL's own shortcode inside the candidate, and return null when
+ * nothing qualifies. That's what makes it safe to keep `main` in the chain,
+ * which is what a reel permalink (no <article>) needs.
+ *
+ * Profile URLs need no proof — the username comes from location.href, not from
+ * here. `main` only, deliberately no document.body fallback: body is
+ * document-wide by definition, which is how the left nav's own-avatar and the
+ * "Suggested for you" row's Follow buttons got into range before.
  */
 function root() {
-  if (isPostUrl(location.href)) {
-    return document.querySelector("div[role='dialog']") || document.querySelector("article") || null;
+  if (!isPostUrl(location.href)) return document.querySelector("main");
+
+  const code = shortcode(location.pathname);
+  if (!code) return null; // a /p/ or /reel/ URL with no shortcode — nothing to prove against
+
+  // Most specific first, so the innermost view of the post wins over an outer
+  // container that merely holds it.
+  const candidates = [
+    ...document.querySelectorAll("div[role='dialog']"),
+    ...document.querySelectorAll("article"),
+    ...document.querySelectorAll("main"),
+  ];
+  // Substring, not an exact path: hrefs carry query strings (?img_index=1) and
+  // sub-routes (/c/<comment-id>/), and a reel's own permalink link is sometimes
+  // written /p/<code>/ instead of /reel/<code>/. The shortcode is random and
+  // ~11 characters, so matching it alone is specific enough.
+  const selfLink = `a[href*="/${code}"]`;
+
+  for (const proves of SELF_LINK_PROOFS) {
+    for (const candidate of candidates) {
+      for (const a of candidate.querySelectorAll(selfLink)) {
+        if (proves(a)) return candidate;
+      }
+    }
   }
-  return document.querySelector("main") || document.body;
+  return null;
 }
 
-/** The first link within `scope` whose href is a real profile URL. */
+/**
+ * The part of the root that carries the account's name, avatar and controls.
+ * Preferring the header is what stops the lookups below from wandering into the
+ * "Suggested for you" row Instagram renders inside `main` (whose Follow buttons
+ * belong to *other* accounts), or into a post's captions, comments and
+ * tagged-people links. Derived from the single root, so it can't reintroduce
+ * the two-independent-subtrees problem. Falls back to the root itself when a
+ * layout ships no <header>.
+ */
+function headerScope(r) {
+  return r ? r.querySelector("header") || r : null;
+}
+
+/** The first *visible* link within `scope` whose href is a real profile URL. */
 function authorLink(scope) {
   if (!scope) return null;
   for (const a of scope.querySelectorAll("a[href^='/']")) {
+    // Same visibility filter as actionControl, for the same reason: inserting
+    // the button beside a hidden link (a collapsed caption, an offscreen
+    // carousel slide) leaves a button that exists but can't be seen — and
+    // because it exists, both the retry poll and the standing observer stop.
+    if (!visible(a)) continue;
     if (usernameFromUrl(`https://www.instagram.com${a.getAttribute("href")}`)) return a;
   }
   return null;
@@ -115,54 +190,74 @@ function authorUsername(scope) {
 function actionControl(scope) {
   if (!scope) return null;
   for (const el of scope.querySelectorAll("button, div[role='button']")) {
-    // offsetParent is spec'd null for fixed-positioned elements even when fully
-    // visible — reel and modal-overlay controls are commonly fixed-positioned,
-    // so that check misclassified them as hidden. getClientRects() isn't fooled.
-    if (el.getClientRects().length === 0) continue;
+    if (!visible(el)) continue;
     if (ACTION_WORDS.test(el.textContent.trim())) return el;
   }
   return null;
 }
 
-export function findAnchor() {
-  const r = root();
-  if (!r) return null;
-
+/**
+ * The element the button is inserted beside. Both entry points go through this,
+ * so findAnchor() and readAccount() cannot disagree about what was found.
+ */
+function anchorIn(scope, onPost) {
+  if (!scope) return null;
   return (
-    actionControl(r) ||
+    actionControl(scope) ||
     // Once you already follow a post/reel's author, its header shows no
     // Follow/Message control at all — every ACTION_WORDS entry misses, and the
     // button would silently never appear. Anchor beside the author's name link
-    // instead. Scoped to the same root as above, so this can never resolve to
-    // the site's persistent top nav.
-    (isPostUrl(location.href) ? authorLink(r) : null)
+    // instead. Same scope as above, so this can never resolve to the site's
+    // persistent top nav.
+    (onPost ? authorLink(scope) : null)
   );
+}
+
+// findAnchor() and readAccount() each resolve the root and the anchor for
+// themselves rather than sharing a cached read. That's deliberate: attach() in
+// inspo-ui.js calls them back to back with no await in between, so they see the
+// same DOM, while the popup's readAccount() arrives arbitrarily later and must
+// re-read the page rather than trust anything cached from an earlier attach.
+export function findAnchor() {
+  return anchorIn(headerScope(root()), isPostUrl(location.href));
 }
 
 export function readAccount() {
   const onPost = isPostUrl(location.href);
   const r = root();
-  if (!r) return null;
+  const scope = headerScope(r);
 
-  const anchor = actionControl(r) || (onPost ? authorLink(r) : null);
-  const username = onPost ? authorUsername(r) : usernameFromUrl(location.href);
+  // Where the username comes from decides how much proof is needed. On a
+  // profile it comes from location.href — authoritative, and impossible to
+  // stale — so the DOM is not allowed to veto it. Gating this on the anchor is
+  // what broke the popup's Save card on your own profile ("Edit profile" is not
+  // an ACTION_WORD) and on every non-English UI; the popup is the *designed*
+  // fallback for exactly the pages where injection fails (PROJECT_NOTES.md,
+  // "Two ways to save, on purpose").
+  const username = onPost ? authorUsername(scope) : usernameFromUrl(location.href);
+  if (!username) return null;
 
-  // Fail safe: an anchor with no resolvable author (or the reverse) means this
-  // root doesn't actually describe the current URL yet — say nothing rather
-  // than save a half-read or previous-page account.
-  if (!anchor || !username) return null;
+  // On a post/reel the username came out of the DOM, so it's only worth as much
+  // as the root it came from. Keep the full fail-safe there: no anchor means no
+  // account, rather than a half-read of a subtree that may still describe the
+  // previous post.
+  if (onPost && !anchorIn(scope, onPost)) return null;
 
   // og:title carries the display name on profile pages. On a post it describes the
   // post, not the author, so fall back to the username there.
   const title =
     (onPost ? null : titleFromOgTitle(attr('meta[property="og:title"]', "content"))) || username;
 
-  // Scoped to root, not the document: Instagram's left nav renders the
-  // logged-in user's own avatar with the same "…'s profile picture" alt text,
-  // earlier in document order than main — a document-wide query would persist
-  // your own avatar onto every saved account instead of the one being viewed.
+  // Probed from the header (or, failing that, the root) — never the document:
+  // Instagram's left nav renders the logged-in user's own avatar with the same
+  // "…'s profile picture" alt text, earlier in document order than main, so a
+  // document-wide query would stamp your own face onto every account you save.
+  // Header scoping is a preference, not a guarantee — on a layout with no
+  // <header> this reads from the root, which on a profile is `main` and can also
+  // hold the "Suggested for you" avatars. It can no longer reach the nav, which
+  // is the failure that mattered.
   const avatarUrl =
-    attrIn(r, `img[alt*="profile picture"]`, "src") ||
+    attrIn(scope, `img[alt*="profile picture"]`, "src") ||
     (onPost ? null : attr('meta[property="og:image"]', "content"));
 
   return {
