@@ -12,6 +12,7 @@ import {
   orphanChannels,
   folderNameTaken,
   friendlyWriteError,
+  accountUrl,
 } from "../src/lib/parse.js";
 
 const ID = "UCabcdefghijklmnopqrstuv"; // UC + 22 chars
@@ -129,4 +130,22 @@ test("friendlyWriteError leaves other messages alone", () => {
   assert.equal(friendlyWriteError("Not signed in"), "Not signed in");
   assert.equal(friendlyWriteError(""), "Something went wrong");
   assert.equal(friendlyWriteError(null), "Something went wrong");
+});
+
+test("accountUrl prefers the stored url", () => {
+  assert.equal(
+    accountUrl({ platform: "youtube", platform_id: ID, url: "https://www.youtube.com/@x" }),
+    "https://www.youtube.com/@x"
+  );
+});
+
+test("accountUrl falls back to a platform-shaped url when none was stored", () => {
+  assert.equal(
+    accountUrl({ platform: "youtube", platform_id: ID, url: null }),
+    `https://www.youtube.com/channel/${ID}`
+  );
+  assert.equal(
+    accountUrl({ platform: "instagram", platform_id: "blenderguru", url: null }),
+    "https://www.instagram.com/blenderguru/"
+  );
 });

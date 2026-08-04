@@ -1,6 +1,6 @@
 import * as store from "../store.js";
 import { getSession, signIn, signOut } from "../supabase.js";
-import { filterChannels, folderName } from "../lib/parse.js";
+import { filterChannels, folderName, accountUrl } from "../lib/parse.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -96,7 +96,9 @@ async function detectPageChannel() {
 
 function renderSaveState() {
   if (!pageChannel) return;
-  const existing = state.channels.find((c) => c.yt_channel_id === pageChannel.ytChannelId);
+  const existing = state.channels.find(
+    (c) => c.platform === pageChannel.platform && c.platform_id === pageChannel.platformId
+  );
   const card = $("save-card");
 
   $("save-folder").innerHTML = "";
@@ -138,7 +140,9 @@ $("save-btn").addEventListener("click", async () => {
 // Changing the folder on an already-saved channel moves it.
 $("save-folder").addEventListener("change", async () => {
   if (!pageChannel) return;
-  const existing = state.channels.find((c) => c.yt_channel_id === pageChannel.ytChannelId);
+  const existing = state.channels.find(
+    (c) => c.platform === pageChannel.platform && c.platform_id === pageChannel.platformId
+  );
   if (!existing) return;
   const folderId = $("save-folder").value ? Number($("save-folder").value) : null;
   try {
@@ -209,7 +213,7 @@ function render() {
 }
 
 function open(channel) {
-  chrome.tabs.create({ url: channel.url || `https://www.youtube.com/channel/${channel.yt_channel_id}` });
+  chrome.tabs.create({ url: accountUrl(channel) });
   window.close();
 }
 

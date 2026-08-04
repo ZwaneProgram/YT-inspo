@@ -171,29 +171,30 @@ export const deleteFolder = (id) =>
 
 export const listChannels = () =>
   api(
-    "/channels?select=id,folder_id,yt_channel_id,handle,title,avatar_url,url,created_at" +
+    "/channels?select=id,folder_id,platform,platform_id,handle,title,avatar_url,url,created_at" +
       "&order=created_at.desc"
   );
 
 /**
- * Save a channel. UNIQUE(user_id, yt_channel_id) means a re-save updates the
- * existing row rather than duplicating it.
+ * Save an account. UNIQUE(user_id, platform, platform_id) means a re-save updates
+ * the existing row rather than duplicating it.
  */
-export async function upsertChannel(channel) {
+export async function upsertChannel(account) {
   const s = await validSession();
-  const rows = await api("/channels?on_conflict=user_id,yt_channel_id", {
+  const rows = await api("/channels?on_conflict=user_id,platform,platform_id", {
     method: "POST",
     headers: {
       Prefer: "resolution=merge-duplicates,return=representation",
     },
     body: {
       user_id: s.user_id,
-      folder_id: channel.folder_id ?? null,
-      yt_channel_id: channel.ytChannelId,
-      handle: channel.handle ?? null,
-      title: channel.title,
-      avatar_url: channel.avatarUrl ?? null,
-      url: channel.url ?? null,
+      folder_id: account.folder_id ?? null,
+      platform: account.platform,
+      platform_id: account.platformId,
+      handle: account.handle ?? null,
+      title: account.title,
+      avatar_url: account.avatarUrl ?? null,
+      url: account.url ?? null,
     },
   });
   return rows[0];
@@ -208,5 +209,8 @@ export const moveChannels = (ids, folderId) =>
 export const deleteChannels = (ids) =>
   api(`/channels?id=in.(${ids.join(",")})`, { method: "DELETE" });
 
-export const findChannel = (ytChannelId) =>
-  api(`/channels?yt_channel_id=eq.${ytChannelId}&select=id,folder_id,title&limit=1`);
+export const findChannel = (platform, platformId) =>
+  api(
+    `/channels?platform=eq.${platform}&platform_id=eq.${platformId}` +
+      "&select=id,folder_id,title&limit=1"
+  );

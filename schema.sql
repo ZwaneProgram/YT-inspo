@@ -17,18 +17,25 @@ create table if not exists channels (
   -- Unsorted (folder_id null). That's what SET NULL buys us.
   folder_id     bigint references folders (id) on delete set null,
 
-  yt_channel_id text not null,
+  -- 'youtube' or 'instagram'. platform_id is the UC… id or the lowercase
+  -- Instagram username; the pair is what makes a row unique.
+  platform      text not null default 'youtube',
+  platform_id   text not null,
+
   handle        text,
   title         text not null,
   avatar_url    text,
   url           text,
   created_at    timestamptz not null default now(),
 
-  -- One row per channel per user. Re-saving updates instead of duplicating.
-  unique (user_id, yt_channel_id)
+  constraint channels_platform_check check (platform in ('youtube', 'instagram')),
+
+  -- One row per account per user. Re-saving updates instead of duplicating.
+  constraint channels_user_platform_id_key unique (user_id, platform, platform_id)
 );
 
-create index if not exists channels_folder_idx on channels (user_id, folder_id);
+create index if not exists channels_folder_idx   on channels (user_id, folder_id);
+create index if not exists channels_platform_idx on channels (user_id, platform);
 
 -- ---------------------------------------------------------------------------
 -- Row Level Security: the anon key in config.js can only ever touch rows
@@ -53,3 +60,20 @@ create policy "own channels" on channels
 -- Optional starter folders. Delete this block if you'd rather start empty.
 -- (Run it while signed in as yourself, or it won't know who you are.)
 -- insert into folders (name, position) values ('3D', 0), ('2D', 1), ('Hooks', 2);
+
+-- ---------------------------------------------------------------------------
+-- Migration, run 2026-08-04. Only needed for a database created before then,
+-- when the table was YouTube-only and keyed on yt_channel_id. A fresh install
+-- gets the right shape from the create table above and should skip this.
+-- ---------------------------------------------------------------------------
+--
+-- alter table channels rename column yt_channel_id to platform_id;
+-- alter table channels add column platform text not null default 'youtube';
+--
+-- alter table channels drop constraint channels_user_id_yt_channel_id_key;
+-- alter table channels add constraint channels_user_platform_id_key
+--   unique (user_id, platform, platform_id);
+-- alter table channels add constraint channels_platform_check
+--   check (platform in ('youtube', 'instagram'));
+--
+-- create index if not exists channels_platform_idx on channels (user_id, platform);

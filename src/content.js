@@ -64,7 +64,8 @@
     if (!title) return null;
 
     return {
-      ytChannelId,
+      platform: "youtube",
+      platformId: ytChannelId,
       handle,
       title,
       avatarUrl,
@@ -83,7 +84,7 @@
   }
 
   async function refreshState(btn, channel) {
-    const res = await send({ type: "status", ytChannelId: channel.ytChannelId });
+    const res = await send({ type: "status", platform: channel.platform, platformId: channel.platformId });
     if (!res.ok) return paint(btn, "warn", "⚠ Inspo");
     if (!res.signedIn) return paint(btn, "", "➕ Sign in");
     if (res.saved) return paint(btn, "saved", `✓ ${res.folder}`);
@@ -93,7 +94,7 @@
   async function onClick(btn, channel) {
     if (picker) return closePicker(); // second click closes it
 
-    const state = await send({ type: "status", ytChannelId: channel.ytChannelId });
+    const state = await send({ type: "status", platform: channel.platform, platformId: channel.platformId });
 
     if (state.ok && !state.signedIn) {
       // Can't open the popup programmatically, so send them to the dashboard to sign in.
@@ -104,7 +105,7 @@
     if (state.ok && state.saved) return openPicker(btn, channel, state.id, state.folderId);
 
     paint(btn, "", "saving…");
-    const res = await send({ type: "save", channel });
+    const res = await send({ type: "save", account: channel });
 
     if (!res.ok) {
       paint(btn, "warn", "⚠ Retry");

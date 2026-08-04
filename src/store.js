@@ -8,16 +8,23 @@ import * as db from "./supabase.js";
 import { orphanChannels } from "./lib/parse.js";
 
 const CACHE_KEY = "catalog";
-const EMPTY = { folders: [], channels: [], syncedAt: 0 };
+
+// Bump when the shape of a cached row changes. A cache written by an older
+// version holds fields the UI no longer reads — better to paint nothing for the
+// few hundred ms until sync() returns than to paint rows full of undefined.
+const CACHE_VERSION = 2;
+
+const EMPTY = { version: CACHE_VERSION, folders: [], channels: [], syncedAt: 0 };
 
 export async function readCache() {
   const { [CACHE_KEY]: c } = await chrome.storage.local.get(CACHE_KEY);
-  return c || EMPTY;
+  if (!c || c.version !== CACHE_VERSION) return EMPTY;
+  return c;
 }
 
 async function writeCache(patch) {
   const current = await readCache();
-  const next = { ...current, ...patch };
+  const next = { ...current, ...patch, version: CACHE_VERSION };
   await chrome.storage.local.set({ [CACHE_KEY]: next });
   return next;
 }
@@ -45,10 +52,12 @@ export async function load(onData) {
 
 // ---------- writes ----------
 
-export async function saveChannel(channel) {
-  const row = await db.upsertChannel(channel);
+export async function saveChannel(account) {
+  const row = await db.upsertChannel(account);
   const { channels } = await readCache();
-  const rest = channels.filter((c) => c.yt_channel_id !== row.yt_channel_id);
+  const rest = channels.filter(
+    (c) => !(c.platform === row.platform && c.platform_id === row.platform_id)
+  );
   await writeCache({ channels: [row, ...rest] });
   return row;
 }
@@ -92,7 +101,7 @@ export async function removeChannels(ids) {
 }
 
 /** Already in the catalog? Answered from cache so the page button can react instantly. */
-export async function lookup(ytChannelId) {
+export async function lookup(platform, platformId) {
   const { channels } = await readCache();
-  return channels.find((c) => c.yt_channel_id === ytChannelId) || null;
+  return channels.find((c) => c.platform === platform && c.platform_id === platformId) || null;
 }

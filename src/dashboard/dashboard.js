@@ -1,6 +1,6 @@
 import * as store from "../store.js";
 import { getSession, signIn, signOut } from "../supabase.js";
-import { filterChannels, folderName } from "../lib/parse.js";
+import { filterChannels, folderName, accountUrl } from "../lib/parse.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -194,7 +194,7 @@ function renderRows() {
       <div class="drow">
         <input type="checkbox" data-id="${c.id}" ${checked.has(c.id) ? "checked" : ""}>
         <img class="avatar" src="${escapeHtml(c.avatar_url || "")}" alt="">
-        <a href="${escapeHtml(c.url || `https://www.youtube.com/channel/${c.yt_channel_id}`)}" target="_blank" rel="noopener">${escapeHtml(c.title)}</a>
+        <a href="${escapeHtml(accountUrl(c))}" target="_blank" rel="noopener">${escapeHtml(c.title)}</a>
         <span class="tag">${escapeHtml(folderName(state.folders, c.folder_id))}</span>
       </div>`
         )

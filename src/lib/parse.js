@@ -96,3 +96,14 @@ export function friendlyWriteError(message) {
   if (/23505|duplicate key/i.test(m)) return "You already have a folder with that name";
   return m || "Something went wrong";
 }
+
+/**
+ * Where clicking a saved row should take you. `url` is stored on save, but a row
+ * written by an older version may not have one — rebuild it from the platform key.
+ */
+export function accountUrl(row) {
+  if (row?.url) return row.url;
+  if (!row?.platform_id) return null;
+  if (row.platform === "instagram") return `https://www.instagram.com/${row.platform_id}/`;
+  return `https://www.youtube.com/channel/${row.platform_id}`;
+}

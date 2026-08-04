@@ -6,11 +6,11 @@ import { getSession } from "./supabase.js";
 import { folderName, friendlyWriteError } from "./lib/parse.js";
 
 const handlers = {
-  async status({ ytChannelId }) {
+  async status({ platform, platformId }) {
     const session = await getSession();
     if (!session) return { signedIn: false };
     const { folders } = await store.readCache();
-    const existing = ytChannelId ? await store.lookup(ytChannelId) : null;
+    const existing = platformId ? await store.lookup(platform, platformId) : null;
     return {
       signedIn: true,
       saved: !!existing,
@@ -21,8 +21,8 @@ const handlers = {
     };
   },
 
-  async save({ channel }) {
-    const row = await store.saveChannel(channel);
+  async save({ account }) {
+    const row = await store.saveChannel(account);
     const { folders } = await store.readCache();
     return {
       saved: true,
