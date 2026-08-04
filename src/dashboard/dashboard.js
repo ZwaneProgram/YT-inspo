@@ -102,6 +102,9 @@ function renderFolders() {
       ? state.channels
       : state.channels.filter((c) => c.platform === state.platform);
   const counts = (id) => inPlatform.filter((c) => (c.folder_id ?? null) === id).length;
+  // Deleting a folder moves every channel in it, not just the ones the platform
+  // filter is showing. The confirmation has to say so or it understates itself.
+  const totalCounts = (id) => state.channels.filter((c) => (c.folder_id ?? null) === id).length;
   const items = [
     ...state.folders.map((f) => ({ id: f.id, name: f.name, deletable: true })),
     { id: null, name: "Unsorted", deletable: false },
@@ -153,7 +156,7 @@ function renderFolders() {
     x.addEventListener("click", async (e) => {
       e.stopPropagation();
       const id = Number(x.dataset.del);
-      const n = counts(id);
+      const n = totalCounts(id);
       const msg = n
         ? `Delete this folder?\n\nIts ${n} channel${n > 1 ? "s" : ""} won't be deleted — they move to Unsorted.`
         : "Delete this folder?";
