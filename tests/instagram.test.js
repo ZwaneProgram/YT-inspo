@@ -7,6 +7,7 @@ import {
   isSaveablePage,
   canonicalUrl,
   titleFromOgTitle,
+  handleFromOgTitle,
 } from "../src/lib/platforms/instagram.js";
 
 const IG = "https://www.instagram.com";
@@ -79,4 +80,21 @@ test("titleFromOgTitle pulls the display name out of Instagram's og:title", () =
   assert.equal(titleFromOgTitle("Andrew Price (@blenderguru)"), "Andrew Price");
   assert.equal(titleFromOgTitle("no parenthesised handle here"), null);
   assert.equal(titleFromOgTitle(null), null);
+});
+
+test("handleFromOgTitle pulls the @handle out of Instagram's og:title", () => {
+  assert.equal(
+    handleFromOgTitle("Andrew Price (@blenderguru) • Instagram photos and videos"),
+    "blenderguru"
+  );
+  assert.equal(handleFromOgTitle("Andrew Price (@blenderguru)"), "blenderguru");
+});
+
+test("handleFromOgTitle lowercases, to compare against usernameFromUrl", () => {
+  assert.equal(handleFromOgTitle("Andrew Price (@BlenderGuru)"), "blenderguru");
+});
+
+test("handleFromOgTitle returns null with no parenthesised handle or no input", () => {
+  assert.equal(handleFromOgTitle("no parenthesised handle here"), null);
+  assert.equal(handleFromOgTitle(null), null);
 });

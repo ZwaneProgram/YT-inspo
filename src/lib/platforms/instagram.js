@@ -61,6 +61,19 @@ export function titleFromOgTitle(og) {
   return m ? m[1].trim() : null;
 }
 
+/**
+ * The @handle inside Instagram's og:title, lowercased to compare against
+ * usernameFromUrl. og:title is document-level and only updated *after*
+ * Instagram flips the URL, so this is how readAccount() proves a profile-page
+ * title/avatar read still describes the account the URL now points at, rather
+ * than the one that was on screen a moment ago.
+ */
+export function handleFromOgTitle(og) {
+  if (!og) return null;
+  const m = String(og).match(/\(@([^)]+)\)/);
+  return m ? m[1].trim().toLowerCase() : null;
+}
+
 // ---------- DOM ----------
 
 // Instagram's class names are machine-generated and churn constantly, so none of
@@ -243,10 +256,24 @@ export function readAccount() {
   // previous post.
   if (onPost && !anchorIn(scope, onPost)) return null;
 
-  // og:title carries the display name on profile pages. On a post it describes the
-  // post, not the author, so fall back to the username there.
-  const title =
-    (onPost ? null : titleFromOgTitle(attr('meta[property="og:title"]', "content"))) || username;
+  // og:title (and og:image, below) are document-level, and Instagram updates
+  // them *after* it flips the URL. On profile→profile navigation React can
+  // patch the existing header in place rather than destroy and rebuild it, so a
+  // stale og:title can still describe the *previous* account for a beat after
+  // location.href (and username, above) already agree on the new one. Require
+  // the @handle inside og:title to match the URL's username before trusting
+  // title or avatar — the profile-page counterpart of root()'s shortcode proof
+  // for posts. A handle that disagrees means "stale, try again next mutation";
+  // no parseable handle (og:title absent, or in a shape we don't recognise) is
+  // not evidence of either way, so it falls through to today's `|| username`
+  // fallback — regressing that would break the popup's Save card on pages where
+  // the DOM can't be read at all ("Two ways to save, on purpose",
+  // PROJECT_NOTES.md).
+  const ogTitle = onPost ? null : attr('meta[property="og:title"]', "content");
+  const ogHandle = ogTitle ? handleFromOgTitle(ogTitle) : null;
+  if (ogHandle && ogHandle !== username) return null;
+
+  const title = titleFromOgTitle(ogTitle) || username;
 
   // Probed from the header (or, failing that, the root) — never the document:
   // Instagram's left nav renders the logged-in user's own avatar with the same
@@ -255,7 +282,8 @@ export function readAccount() {
   // Header scoping is a preference, not a guarantee — on a layout with no
   // <header> this reads from the root, which on a profile is `main` and can also
   // hold the "Suggested for you" avatars. It can no longer reach the nav, which
-  // is the failure that mattered.
+  // is the failure that mattered. og:image is gated on the same og:title proof
+  // above: it goes stale identically, and by the same timing.
   const avatarUrl =
     attrIn(scope, `img[alt*="profile picture"]`, "src") ||
     (onPost ? null : attr('meta[property="og:image"]', "content"));
