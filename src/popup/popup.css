@@ -168,3 +168,40 @@ input, select, button {
 .foot a:hover { color: #cfd3d9; }
 .status { margin-left: auto; color: #6e737b; }
 .status.err { color: #e06c6c; }
+
+/* platform filter */
+.searchrow { display: flex; align-items: center; gap: 8px; }
+.searchrow #search { flex: 1; min-width: 0; }
+
+.seg {
+  display: flex;
+  flex: none;
+  border: 1px solid #33373f;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.seg-btn {
+  background: #23262c;
+  color: #9aa0a8;
+  border: 0;
+  padding: 9px 9px;
+  line-height: 1;
+  cursor: pointer;
+}
+.seg-btn + .seg-btn { border-left: 1px solid #33373f; }
+.seg-btn:hover { color: #e6e6e6; }
+.seg-btn.on { background: #3b5bdb; color: #fff; }
+
+/* row badge */
+.row .badge { flex: none; font-size: 11px; opacity: .75; }
+
+/* avatar fallback for expired CDN links */
+.avatar.tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #3b5bdb;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}

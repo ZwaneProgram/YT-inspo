@@ -1,10 +1,11 @@
 import * as store from "../store.js";
 import { getSession, signIn, signOut } from "../supabase.js";
-import { filterChannels, folderName, accountUrl } from "../lib/parse.js";
+import { filterChannels, folderName, accountUrl, platformBadge } from "../lib/parse.js";
+import { wireAvatars, initial } from "../lib/avatar.js";
 
 const $ = (id) => document.getElementById(id);
 
-let state = { folders: [], channels: [], activeFolder: "all", cursor: 0 };
+let state = { folders: [], channels: [], activeFolder: "all", platform: "all", cursor: 0 };
 let pageChannel = null; // the channel on the current tab, if any
 
 // ---------- boot ----------
@@ -89,7 +90,9 @@ async function detectPageChannel() {
 
   pageChannel = res.account;
   $("save-title").textContent = pageChannel.title;
-  if (pageChannel.avatarUrl) $("save-avatar").src = pageChannel.avatarUrl;
+  $("save-avatar").src = pageChannel.avatarUrl || "";
+  $("save-avatar").dataset.letter = initial(pageChannel.title);
+  wireAvatars($("save-card"));
   $("save-card").classList.remove("hidden");
   renderSaveState();
 }
@@ -158,14 +161,19 @@ $("save-folder").addEventListener("change", async () => {
 // ---------- browse ----------
 
 function visibleChannels() {
-  return filterChannels(state.channels, $("search").value, state.activeFolder);
+  return filterChannels(state.channels, $("search").value, state.activeFolder, state.platform);
 }
 
 function render() {
-  const counts = (id) => state.channels.filter((c) => (c.folder_id ?? null) === id).length;
+  const inPlatform =
+    state.platform === "all"
+      ? state.channels
+      : state.channels.filter((c) => c.platform === state.platform);
+
+  const counts = (id) => inPlatform.filter((c) => (c.folder_id ?? null) === id).length;
 
   const chips = [
-    { id: "all", name: "All", n: state.channels.length },
+    { id: "all", name: "All", n: inPlatform.length },
     ...state.folders.map((f) => ({ id: f.id, name: `📁 ${f.name}`, n: counts(f.id) })),
     { id: null, name: "📁 Unsorted", n: counts(null) },
   ];
@@ -195,19 +203,26 @@ function render() {
         .map(
           (c, i) => `
       <div class="row ${i === state.cursor ? "sel" : ""}" data-i="${i}">
-        <img class="avatar" src="${escapeHtml(c.avatar_url || "")}" alt="">
+        <img class="avatar" src="${escapeHtml(c.avatar_url || "")}" data-letter="${escapeHtml(initial(c.title))}" alt="">
         <div class="name">${escapeHtml(c.title)}</div>
+        <span class="badge">${platformBadge(c.platform)}</span>
         <div class="tag">${escapeHtml(folderName(state.folders, c.folder_id))}</div>
       </div>`
         )
         .join("")
     : `<div class="empty">${state.channels.length ? "No matches" : "Nothing saved yet — hit ➕ Inspo on a channel"}</div>`;
 
+  wireAvatars($("list"));
+
   [...$("list").children].forEach((el) => {
     const i = Number(el.dataset.i);
     if (Number.isNaN(i)) return;
     el.addEventListener("click", () => open(rows[i]));
   });
+
+  for (const b of $("platforms").children) {
+    b.classList.toggle("on", b.dataset.platform === state.platform);
+  }
 
   if (pageChannel) renderSaveState();
 }
@@ -226,6 +241,14 @@ function escapeHtml(s) {
 // ---------- keyboard ----------
 
 $("search").addEventListener("input", () => {
+  state.cursor = 0;
+  render();
+});
+
+$("platforms").addEventListener("click", (e) => {
+  const btn = e.target.closest(".seg-btn");
+  if (!btn) return;
+  state.platform = btn.dataset.platform;
   state.cursor = 0;
   render();
 });
