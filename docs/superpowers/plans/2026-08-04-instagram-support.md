@@ -2071,7 +2071,13 @@ Append to **Known limits** (after line 129):
   and the row falls back to a letter tile. The account still opens fine.
 - **Instagram's markup has no stable class names.** The button is anchored by matching the
   text `Follow` / `Following` / `Message`, so a non-English UI won't find it. That list is
-  `ACTION_WORDS` in `src/lib/platforms/instagram.js`.
+  `ACTION_WORDS` in `src/lib/platforms/instagram.js`. On a post or reel by someone you
+  already follow there is no such control, and the author's name link is used instead.
+- **On a post or reel, the page must prove it's the page you're on.** Instagram opens posts
+  as a dialog over the profile behind them, so `root()` only accepts a container holding a
+  link to the URL's own shortcode. Everything reads from that one container. If it can't be
+  proved, no button appears — deliberately, because the alternative is silently saving
+  whichever account was on screen a moment ago.
 ```
 
 - [ ] **Step 2: Update `PROJECT_NOTES.md`**
