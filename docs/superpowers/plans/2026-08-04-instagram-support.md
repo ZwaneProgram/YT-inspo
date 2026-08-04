@@ -1916,6 +1916,17 @@ In `renderFolders()`, make the counts respect the platform. Replace line 96:
       ? state.channels
       : state.channels.filter((c) => c.platform === state.platform);
   const counts = (id) => inPlatform.filter((c) => (c.folder_id ?? null) === id).length;
+
+  // Deleting a folder moves every channel in it, not just the ones the platform
+  // filter is showing. The confirmation has to say so or it understates itself.
+  const totalCounts = (id) => state.channels.filter((c) => (c.folder_id ?? null) === id).length;
+```
+
+Then, in the delete handler further down the same function, count with `totalCounts` instead
+of `counts` — `counts` stays for the sidebar badge, which should follow the filter:
+
+```js
+      const n = totalCounts(id);
 ```
 
 In `renderRows()`, replace lines 183-202:
