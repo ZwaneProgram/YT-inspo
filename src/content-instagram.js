@@ -7,4 +7,4 @@
     import(chrome.runtime.getURL("src/lib/inspo-ui.js")),
   ]);
   ui.start(adapter);
-})();
+})().catch((e) => console.error("[yt-inspo] content-instagram failed to start", e));

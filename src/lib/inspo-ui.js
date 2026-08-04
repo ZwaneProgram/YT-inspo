@@ -3,6 +3,13 @@
 // Knows nothing about YouTube or Instagram: a platform adapter supplies
 // `platform`, `isSaveablePage(url)`, `findAnchor()`, `readAccount()` and
 // `onNavigate(cb)`. See src/lib/platforms/ for the two implementations.
+//
+// Both sites are single-page apps: they swap pages without a reload and
+// rebuild the header DOM on the fly. That's why lifecycle needs two mechanisms,
+// not one — `adapter.onNavigate` re-attaches when the URL changes, and the
+// standing MutationObserver re-attaches when the header we're anchored to gets
+// replaced out from under us without a navigation event to hang it on. Neither
+// one is redundant with the other; don't delete either.
 
 import { folderNameTaken } from "./parse.js";
 

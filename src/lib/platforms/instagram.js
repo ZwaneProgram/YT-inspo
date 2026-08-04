@@ -144,10 +144,12 @@ function root() {
   if (!code) return null; // a /p/ or /reel/ URL with no shortcode — nothing to prove against
 
   // Most specific first, so the innermost view of the post wins over an outer
-  // container that merely holds it.
+  // container that merely holds it. In a post modal <article> nests inside
+  // div[role='dialog'], so article has to come first for the comment above to
+  // be true; a stale article is rejected by the shortcode proof below anyway.
   const candidates = [
-    ...document.querySelectorAll("div[role='dialog']"),
     ...document.querySelectorAll("article"),
+    ...document.querySelectorAll("div[role='dialog']"),
     ...document.querySelectorAll("main"),
   ];
   // Substring, not an exact path: hrefs carry query strings (?img_index=1) and

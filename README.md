@@ -93,8 +93,8 @@ src/
   lib/
     parse.js           pure helpers, no platform knowledge — the tested part
     platforms/         one adapter per site: URL parsing, selectors, page reading
-    inspo-ui.js         the button + picker + toast, shared by both sites
-    avatar.js           letter-tile fallback for expired avatar URLs
+    inspo-ui.js        the button + picker + toast, shared by both sites
+    avatar.js          letter-tile fallback for expired avatar URLs
   popup/               fast path: save, search, jump
   dashboard/           organizing: folder CRUD, bulk move, remove
 tests/                 node --test, no dependencies
