@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   filterChannels,
+  platformBadge,
   folderName,
   orphanChannels,
   folderNameTaken,
@@ -13,9 +14,10 @@ import {
 const ID = "UCabcdefghijklmnopqrstuv"; // UC + 22 chars
 
 const channels = [
-  { id: 1, title: "Blender Guru", handle: "@blenderguru", folder_id: 10 },
-  { id: 2, title: "Alan Becker", handle: "@alanbecker", folder_id: 20 },
-  { id: 3, title: "Some Guy", handle: "@someguy", folder_id: null },
+  { id: 1, title: "Blender Guru", handle: "@blenderguru", folder_id: 10, platform: "youtube" },
+  { id: 2, title: "Alan Becker", handle: "@alanbecker", folder_id: 20, platform: "youtube" },
+  { id: 3, title: "Some Guy", handle: "@someguy", folder_id: null, platform: "youtube" },
+  { id: 4, title: "Reel Editor", handle: "@reeleditor", folder_id: 10, platform: "instagram" },
 ];
 const folders = [
   { id: 10, name: "3D" },
@@ -32,8 +34,8 @@ test("filterChannels: matches on handle too", () => {
 });
 
 test("filterChannels: empty query falls back to the folder filter", () => {
-  assert.deepEqual(filterChannels(channels, "", 10).map((c) => c.id), [1]);
-  assert.deepEqual(filterChannels(channels, "   ", "all").map((c) => c.id), [1, 2, 3]);
+  assert.deepEqual(filterChannels(channels, "", 10).map((c) => c.id), [1, 4]);
+  assert.deepEqual(filterChannels(channels, "   ", "all").map((c) => c.id), [1, 2, 3, 4]);
 });
 
 test("filterChannels: null folder is the Unsorted pile", () => {
@@ -48,8 +50,9 @@ test("folderName falls back to Unsorted for null and unknown ids", () => {
 
 test("orphanChannels moves a deleted folder's channels to Unsorted, keeping them", () => {
   const after = orphanChannels(channels, 10);
-  assert.equal(after.length, 3, "no channel is lost when a folder is deleted");
+  assert.equal(after.length, 4, "no channel is lost when a folder is deleted");
   assert.equal(after.find((c) => c.id === 1).folder_id, null);
+  assert.equal(after.find((c) => c.id === 4).folder_id, null, "across platforms too");
   assert.equal(after.find((c) => c.id === 2).folder_id, 20, "other folders untouched");
 });
 
@@ -95,4 +98,44 @@ test("accountUrl falls back to a platform-shaped url when none was stored", () =
     accountUrl({ platform: "instagram", platform_id: "blenderguru", url: null }),
     "https://www.instagram.com/blenderguru/"
   );
+});
+
+test("filterChannels: a platform narrows the list", () => {
+  assert.deepEqual(
+    filterChannels(channels, "", "all", "instagram").map((c) => c.id),
+    [4]
+  );
+  assert.deepEqual(
+    filterChannels(channels, "", "all", "youtube").map((c) => c.id),
+    [1, 2, 3]
+  );
+});
+
+test("filterChannels: 'all' means no platform filter, and is the default", () => {
+  assert.deepEqual(
+    filterChannels(channels, "", "all", "all").map((c) => c.id),
+    [1, 2, 3, 4]
+  );
+  assert.deepEqual(filterChannels(channels, "", "all").map((c) => c.id), [1, 2, 3, 4]);
+});
+
+test("filterChannels: a query and a platform narrow together, not one or the other", () => {
+  // "e" matches rows on both platforms; the platform filter must still apply.
+  assert.deepEqual(
+    filterChannels(channels, "e", "all", "instagram").map((c) => c.id),
+    [4]
+  );
+});
+
+test("filterChannels: platform and folder narrow together", () => {
+  assert.deepEqual(
+    filterChannels(channels, "", 10, "youtube").map((c) => c.id),
+    [1]
+  );
+});
+
+test("platformBadge marks the two platforms and shrugs at anything else", () => {
+  assert.equal(platformBadge("youtube"), "▶");
+  assert.equal(platformBadge("instagram"), "📷");
+  assert.equal(platformBadge(undefined), "");
 });

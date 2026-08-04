@@ -2,21 +2,33 @@
 // Anything site-specific lives in src/lib/platforms/. These are the bits worth testing.
 
 /**
- * Popup search. Typing searches every channel regardless of folder;
- * an empty query falls back to the folder filter.
- * folderId of "all" means no filter; null means the Unsorted pile.
+ * Popup and dashboard search. Typing searches every folder; an empty query falls
+ * back to the folder filter. The platform filter applies either way — otherwise
+ * typing would surface rows from the platform you just filtered out.
+ * folderId of "all" means no folder filter, null means the Unsorted pile.
+ * platform of "all" means no platform filter.
  */
-export function filterChannels(channels, query, folderId) {
+export function filterChannels(channels, query, folderId, platform = "all") {
+  const rows =
+    platform === "all" ? channels : channels.filter((c) => c.platform === platform);
+
   const q = (query || "").trim().toLowerCase();
   if (q) {
-    return channels.filter(
+    return rows.filter(
       (c) =>
         (c.title || "").toLowerCase().includes(q) ||
         (c.handle || "").toLowerCase().includes(q)
     );
   }
-  if (folderId === "all") return channels;
-  return channels.filter((c) => (c.folder_id ?? null) === folderId);
+  if (folderId === "all") return rows;
+  return rows.filter((c) => (c.folder_id ?? null) === folderId);
+}
+
+/** The glyph shown on a row to say where it came from. */
+export function platformBadge(platform) {
+  if (platform === "youtube") return "▶";
+  if (platform === "instagram") return "📷";
+  return "";
 }
 
 /** Display name for a channel's folder. */
