@@ -123,7 +123,6 @@ Every platform module exports the same five things:
 |---|---|---|
 | `platform` | string | `"youtube"` or `"instagram"` — stored in the row |
 | `isSaveablePage(url)` | pure | Is this a page where saving makes sense? |
-| `identityFromUrl(url)` | pure | `{ platformId, handle }` or `null` when the URL alone isn't enough |
 | `findAnchor()` | DOM | The element to insert the button after, or `null` |
 | `readAccount()` | DOM | The full row shape, or `null` if the page can't be read |
 | `onNavigate(cb)` | DOM | Fire `cb` after an SPA navigation |
@@ -157,8 +156,8 @@ This list is the Instagram equivalent of `SUBSCRIBE_SELECTORS` — the first thi
 when the button starts appearing where it shouldn't, or stops appearing where it should.
 
 **Post — `/p/<code>/`** and **reel — `/reel/<code>/`.** The username is not in the URL, so
-it comes from the author link in the post header. `identityFromUrl` returns `null` for these
-and the caller falls back to `readAccount()`, exactly as YouTube's `/@handle` pages already do.
+it comes from the author link in the post header. `readAccount()` handles that fallback itself,
+exactly as YouTube's `/@handle` pages already do.
 
 Title is the display name from the profile header, falling back to the username. Avatar is
 the profile image in the header, falling back to `og:image`.
@@ -237,7 +236,7 @@ send are the two the constraint allows. No new `friendlyWriteError` case.
 - Username extracted from `/blenderguru`, `/blenderguru/`, `/blenderguru/?hl=en`, `/blenderguru/tagged/`
 - `/BlenderGuru` and `/blenderguru` produce the same `platform_id` and the same `handle`
 - Every reserved route rejected by `isSaveablePage`
-- `/p/<code>/` and `/reel/<code>/` are saveable but return `null` from `identityFromUrl`
+- `/p/<code>/` and `/reel/<code>/` are saveable but yield no username from the URL alone
 - Non-Instagram hosts rejected
 - Canonical URL shape
 

@@ -433,7 +433,6 @@ Pure refactor. No behaviour change, no new features. YouTube must work exactly a
 - Produces: the **platform adapter contract**, which Task 4 implements a second time:
   - `platform: string`
   - `isSaveablePage(url) -> boolean`
-  - `identityFromUrl(url) -> { platformId, handle } | null`
   - `findAnchor() -> Element | null`
   - `readAccount() -> { platform, platformId, handle, title, avatarUrl, url } | null`
   - `onNavigate(cb) -> void`
@@ -488,13 +487,6 @@ export function isSaveablePage(url) {
   const u = String(url);
   if (!/^https:\/\/(www\.)?youtube\.com\//.test(u)) return false;
   return /\/watch\?|\/channel\/|\/@|\/shorts\//.test(u);
-}
-
-/** What the URL alone can tell us. Null on /@handle pages — those need the DOM. */
-export function identityFromUrl(url) {
-  const platformId = channelIdFromUrl(url);
-  if (!platformId) return null;
-  return { platformId, handle: handleFromUrl(url) };
 }
 
 // ---------- DOM ----------
@@ -589,7 +581,6 @@ import {
   channelIdFromHtml,
   canonicalUrl,
   isSaveablePage,
-  identityFromUrl,
 } from "../src/lib/platforms/youtube.js";
 
 const ID = "UCabcdefghijklmnopqrstuv"; // UC + 22 chars
@@ -639,14 +630,6 @@ test("isSaveablePage accepts channel, video and shorts pages only", () => {
   assert.equal(isSaveablePage("https://www.youtube.com/"), false);
   assert.equal(isSaveablePage("https://google.com/@x"), false);
 });
-
-test("identityFromUrl returns null on /@handle pages, which need the DOM", () => {
-  assert.deepEqual(identityFromUrl(`https://www.youtube.com/channel/${ID}`), {
-    platformId: ID,
-    handle: null,
-  });
-  assert.equal(identityFromUrl("https://www.youtube.com/@blenderguru"), null);
-});
 ```
 
 - [ ] **Step 4: Trim `tests/parse.test.js` to the platform-agnostic cases**
@@ -674,7 +657,7 @@ Then delete the six moved tests — `channelIdFromUrl` (both), `handleFromUrl`, 
 - [ ] **Step 5: Run the tests**
 
 Run: `npm test`
-Expected: PASS. Same total number of assertions as before plus the one new `identityFromUrl` test — nothing was dropped, only moved.
+Expected: PASS. Same total number of assertions as before — nothing was dropped, only moved.
 
 - [ ] **Step 6: Create `src/lib/inspo-ui.js`**
 
@@ -1083,7 +1066,6 @@ git commit -m "refactor: split content script into platform adapter + shared UI"
   - `usernameFromUrl(url) -> string | null` — lowercase, no `@`
   - `isPostUrl(url) -> boolean`
   - `isSaveablePage(url) -> boolean`
-  - `identityFromUrl(url) -> { platformId, handle } | null`
   - `canonicalUrl({ platformId }) -> string | null`
   - `titleFromOgTitle(og) -> string | null`
 
@@ -1099,7 +1081,6 @@ import {
   usernameFromUrl,
   isPostUrl,
   isSaveablePage,
-  identityFromUrl,
   canonicalUrl,
   titleFromOgTitle,
 } from "../src/lib/platforms/instagram.js";
@@ -1159,15 +1140,6 @@ test("isSaveablePage accepts profiles, posts and reels only", () => {
   assert.equal(isSaveablePage(`${IG}/reels/`), false);
   assert.equal(isSaveablePage(`${IG}/direct/inbox/`), false);
   assert.equal(isSaveablePage("https://www.youtube.com/@x"), false);
-});
-
-test("identityFromUrl returns null on posts and reels, which need the DOM", () => {
-  assert.deepEqual(identityFromUrl(`${IG}/BlenderGuru/`), {
-    platformId: "blenderguru",
-    handle: "@blenderguru",
-  });
-  assert.equal(identityFromUrl(`${IG}/p/CxYz123/`), null);
-  assert.equal(identityFromUrl(`${IG}/explore/`), null);
 });
 
 test("canonicalUrl builds the profile URL", () => {
@@ -1239,13 +1211,6 @@ export function isPostUrl(url) {
 /** Is this a page where saving an account makes sense? */
 export function isSaveablePage(url) {
   return !!usernameFromUrl(url) || isPostUrl(url);
-}
-
-/** What the URL alone can tell us. Null on posts and reels — those need the DOM. */
-export function identityFromUrl(url) {
-  const username = usernameFromUrl(url);
-  if (!username) return null;
-  return { platformId: username, handle: `@${username}` };
 }
 
 /** Canonical profile URL we store and open. */
@@ -2116,7 +2081,7 @@ Add these rows to the **Decisions** table (after line 31):
 ```markdown
 | **Two platforms, one catalog** | YouTube and Instagram share folders — a hook idea is a hook idea regardless of site. Rejected: separate folder sets, which would mean `Hooks` existing twice. |
 | **Instagram accounts keyed on username** | No stable public id worth scraping. Cost: a creator renaming themselves produces a duplicate row. Accepted knowingly. |
-| **One content-script UI, two adapters** | The button, picker and toast are ~250 lines and none of it is site-specific. Each site supplies `isSaveablePage`, `identityFromUrl`, `findAnchor`, `readAccount`, `onNavigate` and nothing else. |
+| **One content-script UI, two adapters** | The button, picker and toast are ~250 lines and none of it is site-specific. Each site supplies `isSaveablePage`, `findAnchor`, `readAccount`, `onNavigate` and nothing else. |
 ```
 
 Then replace the **Where to change things** table rows that now point at moved files (lines 52-58):
