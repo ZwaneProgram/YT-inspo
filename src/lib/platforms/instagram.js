@@ -70,7 +70,16 @@ export function titleFromOgTitle(og) {
  */
 export function handleFromOgTitle(og) {
   if (!og) return null;
-  const m = String(og).match(/\(@([^)]+)\)/);
+  // Profile shape is `Name (@handle) • Instagram photos…` — the handle is the
+  // LAST parenthesised group before the "•" (or end of string), not the first
+  // one anywhere in the string. A display name can itself contain "(@x)", and
+  // a profile-scoped post permalink (/<user>/p/<code>/, misread as a profile by
+  // isPostUrl) carries the post's og:title, whose caption can too. Anchoring on
+  // "• or end" is what tells those apart from the real profile handle: the
+  // greedy `.*` forces the capture to the rightmost qualifying group, and a
+  // caption mention — never followed by "•" or end of string — fails to match
+  // at all, falling through to the "no evidence" path instead of a wrong one.
+  const m = String(og).match(/^.*\(@([^)]+)\)\s*(?:•|$)/);
   return m ? m[1].trim().toLowerCase() : null;
 }
 

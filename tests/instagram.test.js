@@ -98,3 +98,22 @@ test("handleFromOgTitle returns null with no parenthesised handle or no input", 
   assert.equal(handleFromOgTitle("no parenthesised handle here"), null);
   assert.equal(handleFromOgTitle(null), null);
 });
+
+test("handleFromOgTitle takes the profile handle, not a handle embedded in the display name", () => {
+  // Display name itself contains "(@janebackup)" ahead of the real profile handle.
+  // The first-match regex would stop there; the profile's own handle is the last
+  // parenthesised group before the "•" separator.
+  assert.equal(
+    handleFromOgTitle("Jane (@janebackup) (@janedoe) • Instagram photos and videos"),
+    "janedoe"
+  );
+});
+
+test("handleFromOgTitle returns null for a post-shaped og:title, even with an (@mention) in the caption", () => {
+  // A caption mention sits mid-string, not immediately before "•" or end of string,
+  // so this must read as "no evidence" rather than latch onto the wrong handle.
+  assert.equal(
+    handleFromOgTitle('Jane Doe on Instagram: "So happy to see (@janebackup) today!"'),
+    null
+  );
+});
