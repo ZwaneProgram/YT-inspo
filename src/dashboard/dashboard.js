@@ -1,10 +1,11 @@
 import * as store from "../store.js";
 import { getSession, signIn, signOut } from "../supabase.js";
-import { filterChannels, folderName, accountUrl } from "../lib/parse.js";
+import { filterChannels, folderName, accountUrl, platformBadge } from "../lib/parse.js";
+import { wireAvatars, initial } from "../lib/avatar.js";
 
 const $ = (id) => document.getElementById(id);
 
-let state = { folders: [], channels: [], activeFolder: null }; // starts on Unsorted
+let state = { folders: [], channels: [], activeFolder: null, platform: "all" }; // starts on Unsorted
 let checked = new Set();
 
 // Which folder is being renamed. NOT null when idle — null is Unsorted's own id,
@@ -90,10 +91,17 @@ function render() {
   renderFolders();
   renderRows();
   renderBulk();
+  for (const b of $("platforms").children) {
+    b.classList.toggle("on", b.dataset.platform === state.platform);
+  }
 }
 
 function renderFolders() {
-  const counts = (id) => state.channels.filter((c) => (c.folder_id ?? null) === id).length;
+  const inPlatform =
+    state.platform === "all"
+      ? state.channels
+      : state.channels.filter((c) => c.platform === state.platform);
+  const counts = (id) => inPlatform.filter((c) => (c.folder_id ?? null) === id).length;
   const items = [
     ...state.folders.map((f) => ({ id: f.id, name: f.name, deletable: true })),
     { id: null, name: "Unsorted", deletable: false },
@@ -181,7 +189,7 @@ function renderFolders() {
 
 function renderRows() {
   const q = $("search").value;
-  const rows = filterChannels(state.channels, q, state.activeFolder);
+  const rows = filterChannels(state.channels, q, state.activeFolder, state.platform);
 
   $("title").textContent = q
     ? `${rows.length} match${rows.length === 1 ? "" : "es"} across all folders`
@@ -193,13 +201,16 @@ function renderRows() {
           (c) => `
       <div class="drow">
         <input type="checkbox" data-id="${c.id}" ${checked.has(c.id) ? "checked" : ""}>
-        <img class="avatar" src="${escapeHtml(c.avatar_url || "")}" alt="">
+        <img class="avatar" src="${escapeHtml(c.avatar_url || "")}" data-letter="${escapeHtml(initial(c.title))}" alt="">
+        <span class="badge">${platformBadge(c.platform)}</span>
         <a href="${escapeHtml(accountUrl(c))}" target="_blank" rel="noopener">${escapeHtml(c.title)}</a>
         <span class="tag">${escapeHtml(folderName(state.folders, c.folder_id))}</span>
       </div>`
         )
         .join("")
     : `<div class="empty">Nothing here</div>`;
+
+  wireAvatars($("rows"));
 
   for (const box of $("rows").querySelectorAll("input[type=checkbox]")) {
     box.addEventListener("change", () => {
@@ -237,6 +248,14 @@ $("remove").addEventListener("click", async () => {
 });
 
 $("search").addEventListener("input", () => {
+  checked.clear();
+  render();
+});
+
+$("platforms").addEventListener("click", (e) => {
+  const btn = e.target.closest(".seg-btn");
+  if (!btn) return;
+  state.platform = btn.dataset.platform;
   checked.clear();
   render();
 });
