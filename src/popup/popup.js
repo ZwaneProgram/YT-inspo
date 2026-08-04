@@ -79,7 +79,7 @@ $("open-dashboard").addEventListener("click", async (e) => {
 
 async function detectPageChannel() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.url?.includes("youtube.com")) return;
+  if (!/^https:\/\/(www\.)?(youtube|instagram)\.com\//.test(tab?.url || "")) return;
 
   const res = await chrome.tabs
     .sendMessage(tab.id, { type: "readAccount" })

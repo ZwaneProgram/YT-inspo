@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "YT Inspo",
-  "version": "0.1.0",
-  "description": "Catalog the YouTube channels you raid for editing ideas. One click to save, two to find.",
+  "name": "Inspo",
+  "version": "0.2.0",
+  "description": "Catalog the YouTube channels and Instagram accounts you raid for editing ideas. One click to save, two to find.",
 
   "permissions": ["storage", "scripting", "activeTab"],
   "host_permissions": [
     "https://*.youtube.com/*",
+    "https://*.instagram.com/*",
     "https://*.supabase.co/*"
   ],
 
@@ -17,7 +18,7 @@
 
   "action": {
     "default_popup": "src/popup/popup.html",
-    "default_title": "YT Inspo"
+    "default_title": "Inspo"
   },
 
   "content_scripts": [
@@ -26,20 +27,26 @@
       "js": ["src/content-youtube.js"],
       "css": ["src/content.css"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.instagram.com/*"],
+      "js": ["src/content-instagram.js"],
+      "css": ["src/content.css"],
+      "run_at": "document_idle"
     }
   ],
 
   "web_accessible_resources": [
     {
       "resources": ["src/lib/*.js", "src/lib/platforms/*.js"],
-      "matches": ["https://www.youtube.com/*"]
+      "matches": ["https://www.youtube.com/*", "https://www.instagram.com/*"]
     }
   ],
 
   "commands": {
     "_execute_action": {
       "suggested_key": { "default": "Ctrl+Shift+Y" },
-      "description": "Open YT Inspo"
+      "description": "Open Inspo"
     }
   }
 }

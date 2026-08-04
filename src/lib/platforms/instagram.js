@@ -60,3 +60,77 @@ export function titleFromOgTitle(og) {
   const m = String(og).match(/^\s*(.+?)\s*\(@[^)]+\)/);
   return m ? m[1].trim() : null;
 }
+
+// ---------- DOM ----------
+
+// Instagram's class names are machine-generated and churn constantly, so none of
+// the selectors below rely on one. The button is anchored by its text instead.
+const ACTION_WORDS = /^(follow|following|follow back|requested|message)$/i;
+
+const attr = (sel, a) => document.querySelector(sel)?.getAttribute(a) || null;
+
+function header() {
+  return document.querySelector("main header") || document.querySelector("header");
+}
+
+/** The author link in a post or reel header, as a lowercase username. */
+function authorFromPost() {
+  const links = document.querySelectorAll(
+    "article header a[href^='/'], main header a[href^='/']"
+  );
+  for (const a of links) {
+    const username = usernameFromUrl(`https://www.instagram.com${a.getAttribute("href")}`);
+    if (username) return username;
+  }
+  return null;
+}
+
+export function findAnchor() {
+  const h = header();
+  if (!h) return null;
+
+  for (const el of h.querySelectorAll("button, div[role='button']")) {
+    if (el.offsetParent === null) continue;
+    if (ACTION_WORDS.test(el.textContent.trim())) return el;
+  }
+  return null;
+}
+
+export function readAccount() {
+  const onPost = isPostUrl(location.href);
+  const username = onPost ? authorFromPost() : usernameFromUrl(location.href);
+  if (!username) return null;
+
+  // og:title carries the display name on profile pages. On a post it describes the
+  // post, not the author, so fall back to the username there.
+  const title =
+    (onPost ? null : titleFromOgTitle(attr('meta[property="og:title"]', "content"))) || username;
+
+  const avatarUrl =
+    attr(`img[alt*="profile picture"]`, "src") ||
+    attr("main header img", "src") ||
+    (onPost ? null : attr('meta[property="og:image"]', "content"));
+
+  return {
+    platform,
+    platformId: username,
+    handle: `@${username}`,
+    title,
+    avatarUrl,
+    url: canonicalUrl({ platformId: username }),
+  };
+}
+
+/**
+ * Instagram fires no navigation event of its own, so watch for the URL changing
+ * under us. Chosen over patching history.pushState, which is more precise but
+ * rewrites a global on a page we don't own.
+ */
+export function onNavigate(cb) {
+  let last = location.href;
+  new MutationObserver(() => {
+    if (location.href === last) return;
+    last = location.href;
+    cb();
+  }).observe(document.body, { childList: true, subtree: true });
+}
