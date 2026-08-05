@@ -22,6 +22,15 @@ const handlers = {
   },
 
   async save({ account }) {
+    // A tab that was open before the last extension update still runs the old
+    // content script, and the service worker respawns from disk on its own —
+    // so a stale sender can reach a fresh handler. The pre-rename script sends
+    // { channel }, which lands here as `account: undefined` and used to fall
+    // through to upsertChannel as a raw TypeError in the page toast. Say what
+    // to do about it instead.
+    if (!account?.platformId) {
+      throw new Error("Reload this tab — the extension was updated under it");
+    }
     const row = await store.saveChannel(account);
     const { folders } = await store.readCache();
     return {
