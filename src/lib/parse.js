@@ -44,13 +44,6 @@ export function sortByTier(channels) {
   return [...channels].sort((a, b) => tierRank(a.tier) - tierRank(b.tier));
 }
 
-/** Clicking a tier badge steps down the list, then off, then back to S. */
-export function nextTier(tier) {
-  const i = TIERS.indexOf(tier);
-  if (i === -1) return TIERS[0];
-  return TIERS[i + 1] ?? null;
-}
-
 /** The glyph shown on a row to say where it came from. */
 export function platformBadge(platform) {
   if (platform === "youtube") return "▶";

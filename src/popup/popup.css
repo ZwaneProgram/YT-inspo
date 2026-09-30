@@ -217,8 +217,8 @@ input, select, button {
   font-weight: 700;
   color: #16181c;
 }
-.tier-S { background: #ffc94d; }
-.tier-A { background: #c49bff; }
-.tier-B { background: #7ea8ff; }
-.tier-C { background: #aab3c5; }
+.tier-S { background: #ffc233; }
+.tier-A { background: #b57bff; }
+.tier-B { background: #4d8dff; }
+.tier-C { background: #9aa5b8; }
 .tier-none { border: 1px dashed #4a4f58; color: #6b717a; }

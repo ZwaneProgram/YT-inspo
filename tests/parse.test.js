@@ -10,7 +10,6 @@ import {
   friendlyWriteError,
   accountUrl,
   sortByTier,
-  nextTier,
 } from "../src/lib/parse.js";
 
 const ID = "UCabcdefghijklmnopqrstuv"; // UC + 22 chars
@@ -162,12 +161,4 @@ test("filterChannels: results come back tier-sorted", () => {
   ];
   assert.deepEqual(filterChannels(rows, "", 10).map((c) => c.id), [2, 1]);
   assert.deepEqual(filterChannels(rows, "b", "all").map((c) => c.id), [2]);
-});
-
-test("nextTier cycles S → A → B → C → none → S", () => {
-  assert.equal(nextTier(null), "S");
-  assert.equal(nextTier(undefined), "S");
-  assert.equal(nextTier("S"), "A");
-  assert.equal(nextTier("B"), "C");
-  assert.equal(nextTier("C"), null);
 });

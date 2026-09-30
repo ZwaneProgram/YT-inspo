@@ -1,6 +1,6 @@
 import * as store from "../store.js";
 import { getSession, signIn, signOut } from "../supabase.js";
-import { filterChannels, folderName, accountUrl, platformBadge, TIERS, nextTier } from "../lib/parse.js";
+import { filterChannels, folderName, accountUrl, platformBadge, TIERS } from "../lib/parse.js";
 import { wireAvatars, initial } from "../lib/avatar.js";
 
 const $ = (id) => document.getElementById(id);
@@ -191,6 +191,7 @@ function renderFolders() {
 }
 
 function renderRows() {
+  closeTierMenu(); // it's anchored to a button this render replaces
   const q = $("search").value;
   const rows = filterChannels(state.channels, q, state.activeFolder, state.platform);
 
@@ -202,9 +203,11 @@ function renderRows() {
     ? rows
         .map(
           (c) => `
-      <div class="drow">
+      <div class="drow ${c.tier ? `tier-row-${c.tier}` : ""}">
         <input type="checkbox" data-id="${c.id}" ${checked.has(c.id) ? "checked" : ""}>
-        <button class="tier tier-${c.tier || "none"}" data-tier="${c.id}" title="Click to change tier">${c.tier || "–"}</button>
+        <button class="tier-pick tier-${c.tier || "none"}" data-tier="${c.id}" aria-haspopup="menu" title="Set tier">
+          ${c.tier || "–"}<span class="caret">▾</span>
+        </button>
         <img class="avatar" src="${escapeHtml(c.avatar_url || "")}" data-letter="${escapeHtml(initial(c.title))}" alt="">
         <span class="badge">${platformBadge(c.platform)}</span>
         <a href="${escapeHtml(accountUrl(c))}" target="_blank" rel="noopener">${escapeHtml(c.title)}</a>
@@ -217,10 +220,11 @@ function renderRows() {
   wireAvatars($("rows"));
 
   for (const b of $("rows").querySelectorAll("[data-tier]")) {
-    b.addEventListener("click", async () => {
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
       const id = Number(b.dataset.tier);
-      const row = state.channels.find((c) => c.id === id);
-      await attempt(() => store.setTier([id], nextTier(row?.tier)));
+      if (tierMenu?.id === id) return closeTierMenu(); // second click closes it
+      openTierMenu(b, id, state.channels.find((c) => c.id === id)?.tier ?? null);
     });
   }
 
@@ -232,6 +236,79 @@ function renderRows() {
     });
   }
 }
+
+// ---------- tier menu ----------
+//
+// A custom popover, not a <select>: the browser draws a native option list itself
+// and ignores almost all styling on it.
+
+const TIER_HINT = { S: "The best", A: "Great", B: "Good", C: "Okay" };
+let tierMenu = null; // { el, id }
+
+function closeTierMenu() {
+  if (!tierMenu) return;
+  tierMenu.el.remove();
+  tierMenu = null;
+  document.removeEventListener("mousedown", onTierOutside, true);
+  document.removeEventListener("keydown", onTierKey, true);
+}
+
+function onTierOutside(e) {
+  if (tierMenu && !tierMenu.el.contains(e.target) && !e.target.closest?.("[data-tier]")) closeTierMenu();
+}
+
+function onTierKey(e) {
+  if (!tierMenu) return;
+  const items = [...tierMenu.el.querySelectorAll("button")];
+  const i = items.indexOf(document.activeElement);
+  if (e.key === "Escape") closeTierMenu();
+  else if (e.key === "ArrowDown") items[(i + 1) % items.length].focus();
+  else if (e.key === "ArrowUp") items[(i - 1 + items.length) % items.length].focus();
+  else return;
+  e.preventDefault();
+}
+
+function openTierMenu(trigger, id, current) {
+  closeTierMenu();
+  const el = document.createElement("div");
+  el.className = "tier-menu";
+  el.setAttribute("role", "menu");
+  el.innerHTML =
+    TIERS.map(
+      (t) => `
+      <button role="menuitem" data-set="${t}" class="t-${t} ${current === t ? "on" : ""}">
+        <span class="tier tier-${t}">${t}</span>
+        <span class="hint">${TIER_HINT[t]}</span>
+        ${current === t ? `<span class="check">✓</span>` : ""}
+      </button>`
+    ).join("") +
+    `<div class="sep"></div>
+     <button role="menuitem" data-set="" class="clear" ${current ? "" : "disabled"}>Clear tier</button>`;
+
+  document.body.append(el);
+  tierMenu = { el, id };
+
+  // Under the button, flipped above it when the row is near the bottom of the window.
+  const r = trigger.getBoundingClientRect();
+  const h = el.offsetHeight;
+  el.style.left = `${Math.min(r.left, window.innerWidth - el.offsetWidth - 8)}px`;
+  el.style.top = `${r.bottom + h + 6 > window.innerHeight ? r.top - h - 6 : r.bottom + 6}px`;
+
+  for (const item of el.querySelectorAll("[data-set]")) {
+    item.addEventListener("click", async () => {
+      const tier = item.dataset.set || null;
+      closeTierMenu();
+      if (tier !== current) await attempt(() => store.setTier([id], tier));
+    });
+  }
+
+  (el.querySelector("button.on") || el.querySelector("button")).focus();
+  document.addEventListener("mousedown", onTierOutside, true);
+  document.addEventListener("keydown", onTierKey, true);
+}
+
+window.addEventListener("scroll", closeTierMenu, true);
+window.addEventListener("resize", closeTierMenu);
 
 function renderBulk() {
   $("bulk").classList.toggle("hidden", checked.size === 0);
