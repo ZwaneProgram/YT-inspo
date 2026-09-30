@@ -18,6 +18,7 @@ const handlers = {
       // The picker needs the row to move it, and its folder to tick the right line.
       id: existing ? existing.id : null,
       folderId: existing ? existing.folder_id ?? null : null,
+      tier: existing ? existing.tier ?? null : null,
     };
   },
 
@@ -38,6 +39,7 @@ const handlers = {
       folder: folderName(folders, row.folder_id),
       id: row.id,
       folderId: row.folder_id ?? null,
+      tier: row.tier ?? null,
     };
   },
 
@@ -58,6 +60,11 @@ const handlers = {
 
   async moveChannel({ id, folderId }) {
     await store.moveChannels([id], folderId);
+    return { ok: true };
+  },
+
+  async setTier({ id, tier }) {
+    await store.setTier([id], tier);
     return { ok: true };
   },
 

@@ -9,6 +9,8 @@ import {
   folderNameTaken,
   friendlyWriteError,
   accountUrl,
+  sortByTier,
+  nextTier,
 } from "../src/lib/parse.js";
 
 const ID = "UCabcdefghijklmnopqrstuv"; // UC + 22 chars
@@ -138,4 +140,34 @@ test("platformBadge marks the two platforms and shrugs at anything else", () => 
   assert.equal(platformBadge("youtube"), "▶");
   assert.equal(platformBadge("instagram"), "📷");
   assert.equal(platformBadge(undefined), "");
+});
+
+test("sortByTier: S, A, B, C, then untiered — keeping incoming order within a tier", () => {
+  const rows = [
+    { id: 1, tier: null },
+    { id: 2, tier: "B" },
+    { id: 3, tier: "S" },
+    { id: 4 },
+    { id: 5, tier: "B" },
+    { id: 6, tier: "A" },
+  ];
+  assert.deepEqual(sortByTier(rows).map((c) => c.id), [3, 6, 2, 5, 1, 4]);
+  assert.deepEqual(rows.map((c) => c.id), [1, 2, 3, 4, 5, 6], "doesn't sort in place");
+});
+
+test("filterChannels: results come back tier-sorted", () => {
+  const rows = [
+    { id: 1, title: "a", folder_id: 10, platform: "youtube", tier: "C" },
+    { id: 2, title: "b", folder_id: 10, platform: "youtube", tier: "S" },
+  ];
+  assert.deepEqual(filterChannels(rows, "", 10).map((c) => c.id), [2, 1]);
+  assert.deepEqual(filterChannels(rows, "b", "all").map((c) => c.id), [2]);
+});
+
+test("nextTier cycles S → A → B → C → none → S", () => {
+  assert.equal(nextTier(null), "S");
+  assert.equal(nextTier(undefined), "S");
+  assert.equal(nextTier("S"), "A");
+  assert.equal(nextTier("B"), "C");
+  assert.equal(nextTier("C"), null);
 });

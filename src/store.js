@@ -93,6 +93,15 @@ export async function moveChannels(ids, folderId) {
   });
 }
 
+export async function setTier(ids, tier) {
+  await db.setChannelTier(ids, tier);
+  const { channels } = await readCache();
+  const set = new Set(ids);
+  await writeCache({
+    channels: channels.map((c) => (set.has(c.id) ? { ...c, tier } : c)),
+  });
+}
+
 export async function removeChannels(ids) {
   await db.deleteChannels(ids);
   const { channels } = await readCache();

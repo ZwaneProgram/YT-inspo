@@ -89,6 +89,30 @@ button#yt-inspo-btn.warn { background: #a33b3b; }
 .yt-inspo-panel .new { color: #9fb4ff; }
 .yt-inspo-panel .sep { height: 1px; margin: 6px 4px; background: #38405a; }
 
+.yt-inspo-panel .tiers {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 2px;
+}
+.yt-inspo-panel .tiers .label { margin-right: auto; font-size: 12px; color: #8f9ab5; }
+.yt-inspo-panel .tier {
+  width: 28px;
+  padding: 3px 0;
+  border-radius: 6px;
+  border: 1px solid #38405a;
+  text-align: center;
+  font-weight: 700;
+  cursor: pointer;
+  opacity: .55;
+}
+.yt-inspo-panel .tier:hover { opacity: .85; }
+.yt-inspo-panel .tier.on { opacity: 1; color: #151924; border-color: transparent; }
+.yt-inspo-panel .tier-S.on { background: #ffc94d; }
+.yt-inspo-panel .tier-A.on { background: #c49bff; }
+.yt-inspo-panel .tier-B.on { background: #7ea8ff; }
+.yt-inspo-panel .tier-C.on { background: #aab3c5; }
+
 .yt-inspo-panel input {
   display: block;
   width: 100%;

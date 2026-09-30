@@ -26,9 +26,12 @@ create table if not exists channels (
   title         text not null,
   avatar_url    text,
   url           text,
+  -- Tier-list rank: 'S' is the best. null = not ranked yet, listed after C.
+  tier          text,
   created_at    timestamptz not null default now(),
 
   constraint channels_platform_check check (platform in ('youtube', 'instagram')),
+  constraint channels_tier_check check (tier in ('S', 'A', 'B', 'C')),
 
   -- One row per account per user. Re-saving updates instead of duplicating.
   constraint channels_user_platform_id_key unique (user_id, platform, platform_id)
@@ -77,3 +80,12 @@ create policy "own channels" on channels
 --   check (platform in ('youtube', 'instagram'));
 --
 -- create index if not exists channels_platform_idx on channels (user_id, platform);
+
+-- ---------------------------------------------------------------------------
+-- Migration, run 2026-09-30. Adds channel tiers to a database created before
+-- then. A fresh install already has the column and should skip this.
+-- ---------------------------------------------------------------------------
+--
+-- alter table channels add column tier text;
+-- alter table channels add constraint channels_tier_check
+--   check (tier in ('S', 'A', 'B', 'C'));

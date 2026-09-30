@@ -11,7 +11,7 @@
 // replaced out from under us without a navigation event to hang it on. Neither
 // one is redundant with the other; don't delete either.
 
-import { folderNameTaken } from "./parse.js";
+import { folderNameTaken, TIERS } from "./parse.js";
 
 const BTN_ID = "yt-inspo-btn";
 
@@ -53,7 +53,7 @@ export function start(adapter) {
       return;
     }
     // Already saved: no write, just let them re-file it.
-    if (state.ok && state.saved) return openPicker(btn, account, state.id, state.folderId);
+    if (state.ok && state.saved) return openPicker(btn, account, state.id, state.folderId, state.tier);
 
     paint(btn, "", "saving…");
     const res = await send({ type: "save", account });
@@ -64,7 +64,7 @@ export function start(adapter) {
       return;
     }
     paint(btn, "saved", `✓ ${res.folder}`);
-    return openPicker(btn, account, res.id, res.folderId ?? null);
+    return openPicker(btn, account, res.id, res.folderId ?? null, res.tier ?? null);
   }
 
   function attach() {
@@ -146,6 +146,20 @@ export function start(adapter) {
     const el = picker.el;
     el.textContent = "";
 
+    // Tier chips. Setting one leaves the panel open — you usually still want to file it.
+    const tiers = document.createElement("div");
+    tiers.className = "tiers";
+    tiers.append(Object.assign(document.createElement("span"), { className: "label", textContent: "Tier" }));
+    for (const t of TIERS) {
+      const chip = document.createElement("span");
+      chip.className = `tier tier-${t}${picker.tier === t ? " on" : ""}`;
+      chip.textContent = t;
+      chip.title = picker.tier === t ? "Click again to clear" : `Rank ${t}`;
+      chip.addEventListener("click", () => chooseTier(picker.tier === t ? null : t));
+      tiers.append(chip);
+    }
+    el.append(tiers, Object.assign(document.createElement("div"), { className: "sep" }));
+
     const items = [...picker.folders.map((f) => ({ id: f.id, name: f.name })), { id: null, name: "Unsorted" }];
 
     for (const item of items) {
@@ -208,6 +222,17 @@ export function start(adapter) {
     closePicker();
   }
 
+  async function chooseTier(tier) {
+    const res = await send({ type: "setTier", id: picker.savedId, tier });
+    if (!res.ok) {
+      picker.error = res.error || "Couldn't set the tier";
+      return renderPicker();
+    }
+    picker.tier = tier;
+    picker.error = "";
+    renderPicker();
+  }
+
   async function createAndFile(rawName) {
     const name = String(rawName).trim();
     if (!name) return;
@@ -242,7 +267,7 @@ export function start(adapter) {
     closePicker();
   }
 
-  async function openPicker(btn, account, savedId, folderId) {
+  async function openPicker(btn, account, savedId, folderId, tier) {
     closePicker();
 
     const res = await send({ type: "listFolders" });
@@ -258,6 +283,7 @@ export function start(adapter) {
       account,
       savedId,
       folderId: folderId ?? null,
+      tier: tier ?? null,
       folders: res.folders || [],
       // First ever use: nothing to click but "+ New folder", so skip a step.
       creating: (res.folders || []).length === 0,

@@ -14,14 +14,41 @@ export function filterChannels(channels, query, folderId, platform = "all") {
 
   const q = (query || "").trim().toLowerCase();
   if (q) {
-    return rows.filter(
-      (c) =>
-        (c.title || "").toLowerCase().includes(q) ||
-        (c.handle || "").toLowerCase().includes(q)
+    return sortByTier(
+      rows.filter(
+        (c) =>
+          (c.title || "").toLowerCase().includes(q) ||
+          (c.handle || "").toLowerCase().includes(q)
+      )
     );
   }
-  if (folderId === "all") return rows;
-  return rows.filter((c) => (c.folder_id ?? null) === folderId);
+  if (folderId === "all") return sortByTier(rows);
+  return sortByTier(rows.filter((c) => (c.folder_id ?? null) === folderId));
+}
+
+// ---------- tiers ----------
+
+/** Best first. A channel with no tier (null) ranks below all of these. */
+export const TIERS = ["S", "A", "B", "C"];
+
+const tierRank = (tier) => {
+  const i = TIERS.indexOf(tier);
+  return i === -1 ? TIERS.length : i;
+};
+
+/**
+ * S → A → B → C → untiered. Stable, so within a tier rows keep the order they
+ * came in (newest first, from listChannels).
+ */
+export function sortByTier(channels) {
+  return [...channels].sort((a, b) => tierRank(a.tier) - tierRank(b.tier));
+}
+
+/** Clicking a tier badge steps down the list, then off, then back to S. */
+export function nextTier(tier) {
+  const i = TIERS.indexOf(tier);
+  if (i === -1) return TIERS[0];
+  return TIERS[i + 1] ?? null;
 }
 
 /** The glyph shown on a row to say where it came from. */

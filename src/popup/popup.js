@@ -203,6 +203,7 @@ function render() {
         .map(
           (c, i) => `
       <div class="row ${i === state.cursor ? "sel" : ""}" data-i="${i}">
+        ${c.tier ? `<span class="tier tier-${c.tier}">${c.tier}</span>` : ""}
         <img class="avatar" src="${escapeHtml(c.avatar_url || "")}" data-letter="${escapeHtml(initial(c.title))}" alt="">
         <div class="name">${escapeHtml(c.title)}</div>
         <span class="badge">${platformBadge(c.platform)}</span>

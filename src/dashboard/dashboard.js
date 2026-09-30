@@ -1,6 +1,6 @@
 import * as store from "../store.js";
 import { getSession, signIn, signOut } from "../supabase.js";
-import { filterChannels, folderName, accountUrl, platformBadge } from "../lib/parse.js";
+import { filterChannels, folderName, accountUrl, platformBadge, TIERS, nextTier } from "../lib/parse.js";
 import { wireAvatars, initial } from "../lib/avatar.js";
 
 const $ = (id) => document.getElementById(id);
@@ -204,6 +204,7 @@ function renderRows() {
           (c) => `
       <div class="drow">
         <input type="checkbox" data-id="${c.id}" ${checked.has(c.id) ? "checked" : ""}>
+        <button class="tier tier-${c.tier || "none"}" data-tier="${c.id}" title="Click to change tier">${c.tier || "–"}</button>
         <img class="avatar" src="${escapeHtml(c.avatar_url || "")}" data-letter="${escapeHtml(initial(c.title))}" alt="">
         <span class="badge">${platformBadge(c.platform)}</span>
         <a href="${escapeHtml(accountUrl(c))}" target="_blank" rel="noopener">${escapeHtml(c.title)}</a>
@@ -214,6 +215,14 @@ function renderRows() {
     : `<div class="empty">Nothing here</div>`;
 
   wireAvatars($("rows"));
+
+  for (const b of $("rows").querySelectorAll("[data-tier]")) {
+    b.addEventListener("click", async () => {
+      const id = Number(b.dataset.tier);
+      const row = state.channels.find((c) => c.id === id);
+      await attempt(() => store.setTier([id], nextTier(row?.tier)));
+    });
+  }
 
   for (const box of $("rows").querySelectorAll("input[type=checkbox]")) {
     box.addEventListener("change", () => {
@@ -233,7 +242,20 @@ function renderBulk() {
   $("moveto").append(new Option("— pick —", ""));
   for (const f of state.folders) $("moveto").append(new Option(f.name, f.id));
   $("moveto").append(new Option("Unsorted", "null"));
+
+  $("tierto").innerHTML = "";
+  $("tierto").append(new Option("— pick —", ""));
+  for (const t of TIERS) $("tierto").append(new Option(t, t));
+  $("tierto").append(new Option("No tier", "null"));
 }
+
+$("tierto").addEventListener("change", async () => {
+  const v = $("tierto").value;
+  if (v === "") return;
+  const ids = [...checked];
+  checked.clear();
+  await attempt(() => store.setTier(ids, v === "null" ? null : v));
+});
 
 $("moveto").addEventListener("change", async () => {
   const v = $("moveto").value;

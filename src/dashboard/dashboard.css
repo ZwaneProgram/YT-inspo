@@ -210,3 +210,23 @@ main { flex: 1; padding: 14px 20px; overflow-y: auto; }
   font-size: 13px;
   font-weight: 600;
 }
+
+/* tier badge: S gold, A purple, B blue, C gray; dashed = not ranked */
+.tier {
+  flex: none;
+  width: 22px;
+  padding: 1px 0;
+  border-radius: 5px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #16181c;
+}
+.tier-S { background: #ffc94d; }
+.tier-A { background: #c49bff; }
+.tier-B { background: #7ea8ff; }
+.tier-C { background: #aab3c5; }
+.tier-none { border: 1px dashed #4a4f58; color: #6b717a; }
+button.tier { border: 0; cursor: pointer; font-family: inherit; }
+button.tier-none { border: 1px dashed #4a4f58; background: none; }
+button.tier:hover { filter: brightness(1.15); }

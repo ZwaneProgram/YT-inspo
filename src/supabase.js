@@ -171,7 +171,7 @@ export const deleteFolder = (id) =>
 
 export const listChannels = () =>
   api(
-    "/channels?select=id,folder_id,platform,platform_id,handle,title,avatar_url,url,created_at" +
+    "/channels?select=id,folder_id,platform,platform_id,handle,title,avatar_url,url,tier,created_at" +
       "&order=created_at.desc"
   );
 
@@ -209,6 +209,13 @@ export const moveChannels = (ids, folderId) =>
   api(`/channels?id=in.(${ids.join(",")})`, {
     method: "PATCH",
     body: { folder_id: folderId },
+  });
+
+// Deliberately not part of upsertChannel's body: a re-save must never reset the tier.
+export const setChannelTier = (ids, tier) =>
+  api(`/channels?id=in.(${ids.join(",")})`, {
+    method: "PATCH",
+    body: { tier },
   });
 
 export const deleteChannels = (ids) =>
